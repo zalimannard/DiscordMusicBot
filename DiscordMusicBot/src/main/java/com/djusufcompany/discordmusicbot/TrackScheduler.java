@@ -25,7 +25,7 @@ public class TrackScheduler extends AudioEventAdapter
 {
     private final AudioPlayer player;
     private final Guild guild;
-    private ArrayList<String> queue;
+    private ArrayList<TrackInfo> queue;
     private ArrayList<Response<File>> downloaded;
     private Integer currentTrackNumber = 0;
     private Integer downloadBuferNumber = 3;
@@ -40,10 +40,17 @@ public class TrackScheduler extends AudioEventAdapter
 
     public void addToQueue(String tracksUrl)
     {
-        queue.add(tracksUrl);
+        YoutubeDownloader downloader = new YoutubeDownloader();
+        String videoId = urlToId(tracksUrl);
+        RequestVideoInfo requestInfo = new RequestVideoInfo(videoId);
+        Response<VideoInfo> responseInfo = downloader.getVideoInfo(requestInfo);
+        VideoInfo video = responseInfo.data();
+        
+        queue.add(new TrackInfo(video.details().author(), video.details().title(), tracksUrl));
+
         if (downloaded.size() < downloadBuferNumber)
         {
-            downloaded.add(loadTrackFormUrl(tracksUrl));
+            downloaded.add(loadTrackFromUrl(tracksUrl));
         }
         if (downloaded.size() == 1)
         {
@@ -63,13 +70,14 @@ public class TrackScheduler extends AudioEventAdapter
         {
             nextTrack();
         }
+        currentTrackNumber += 1;
     }
 
     public void nextTrack()
     {
         if ((downloaded.size() >= downloadBuferNumber) && (queue.size() - currentTrackNumber > downloadBuferNumber))
         {
-            downloaded.add(loadTrackFormUrl(queue.get(currentTrackNumber + downloadBuferNumber)));
+            downloaded.add(loadTrackFromUrl(queue.get(currentTrackNumber + downloadBuferNumber).getUrl()));
         }
         downloaded.get(0).data().delete();
         downloaded.remove(0);
@@ -80,24 +88,28 @@ public class TrackScheduler extends AudioEventAdapter
         else
         {
             PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
-            currentTrackNumber += 1;
         }
+    }
+
+    public TrackInfo getTrackInfo()
+    {
+        return queue.get(currentTrackNumber);
+    }
+
+    public ArrayList<TrackInfo> getQueueInfo()
+    {
+        return queue;
     }
 
     public void skip()
     {
-        System.out.println("skip");
-        if ((downloaded.size() >= downloadBuferNumber) && (queue.size() - currentTrackNumber > downloadBuferNumber))
+        if (currentTrackNumber + downloadBuferNumber - 1 < queue.size())
         {
-            downloaded.add(loadTrackFormUrl(queue.get(currentTrackNumber + downloadBuferNumber)));
+            downloaded.add(loadTrackFromUrl(queue.get(currentTrackNumber + downloadBuferNumber).getUrl()));
         }
-        System.out.println(downloaded.size() + "  " + downloadBuferNumber + "  " + queue.size() + "  " + currentTrackNumber + "  " + downloadBuferNumber);
         downloaded.get(0).data().delete();
-        System.out.println(downloaded.size() + "  " + downloadBuferNumber + "  " + queue.size() + "  " + currentTrackNumber + "  " + downloadBuferNumber);
         downloaded.remove(0);
-        System.out.println(downloaded.size() + "  " + downloadBuferNumber + "  " + queue.size() + "  " + currentTrackNumber + "  " + downloadBuferNumber);
         player.stopTrack();
-        System.out.println(downloaded.size() + "  " + downloadBuferNumber + "  " + queue.size() + "  " + currentTrackNumber + "  " + downloadBuferNumber);
         if (downloaded.size() == 0)
         {
             guild.getAudioManager().closeAudioConnection();
@@ -105,17 +117,78 @@ public class TrackScheduler extends AudioEventAdapter
         else
         {
             PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
-            currentTrackNumber += 1;
         }
     }
 
-    private Response<File> loadTrackFormUrl(String url)
+    public void remove(Integer id)
+    {
+        if ((id >= queue.size()) || (id < 0))
+        {
+            System.out.println("1");
+            return;
+        }
+        queue.remove(queue.get(id));
+        if (id == currentTrackNumber)
+        {
+            System.out.println("2");
+            currentTrackNumber -= 1;
+            skip();
+        }
+        else if (id < currentTrackNumber)
+        {
+            System.out.println("3");
+            currentTrackNumber -= 1;
+        }
+        else if (currentTrackNumber + downloadBuferNumber > id)
+        {
+            System.out.println("4");
+            downloaded.get(id - currentTrackNumber).data().delete();
+            downloaded.remove(id - currentTrackNumber);
+            if (currentTrackNumber + downloadBuferNumber - 1 < queue.size())
+            {
+                downloaded.add(loadTrackFromUrl(queue.get(currentTrackNumber + downloadBuferNumber).getUrl()));
+            }
+        }
+    }
+
+    private Response<File> loadTrackFromUrl(String url)
     {
         YoutubeDownloader downloader = new YoutubeDownloader();
         Config config = downloader.getConfig();
         config.setMaxRetries(0);
-        String videoId = null;
+        String videoId = urlToId(url);
 
+        RequestVideoInfo requestInfo = new RequestVideoInfo(videoId);
+        Response<VideoInfo> responseInfo = downloader.getVideoInfo(requestInfo);
+        VideoInfo video = responseInfo.data();
+
+        Format format = video.bestAudioFormat();
+        if (format == null)
+        {
+            format = video.bestVideoFormat();
+        }
+        if (format != null)
+        {
+            File outputDir = null;
+            try
+            {
+                outputDir = Files.createTempDirectory("video").toFile();
+            }
+            catch (IOException ex)
+            {
+                Logger.getLogger(TrackScheduler.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            RequestVideoFileDownload requestFile = new RequestVideoFileDownload(format)
+                    .saveTo(outputDir)
+                    .renameTo("video");
+            return downloader.downloadVideoFile(requestFile);
+        }
+        return null;
+    }
+
+    private String urlToId(String url)
+    {
+        String videoId = null;
         if (url.contains("&t="))
         {
             url = url.substring(0, url.indexOf("&t="));
@@ -137,25 +210,7 @@ public class TrackScheduler extends AudioEventAdapter
         {
             videoId = url.substring("https://youtu.be/".length());
         }
-
-        RequestVideoInfo requestInfo = new RequestVideoInfo(videoId);
-        Response<VideoInfo> responseInfo = downloader.getVideoInfo(requestInfo);
-        VideoInfo video = responseInfo.data();
-        Format format = video.bestAudioFormat();
-
-        File outputDir = null;
-        try
-        {
-            outputDir = Files.createTempDirectory("video").toFile();
-        }
-        catch (IOException ex)
-        {
-            Logger.getLogger(TrackScheduler.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        RequestVideoFileDownload requestFile = new RequestVideoFileDownload(format)
-                .saveTo(outputDir)
-                .renameTo("video");
-        return downloader.downloadVideoFile(requestFile);
+        return videoId;
     }
 }
 

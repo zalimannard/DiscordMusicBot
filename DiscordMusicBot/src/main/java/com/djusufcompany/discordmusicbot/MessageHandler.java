@@ -1,10 +1,9 @@
 package com.djusufcompany.discordmusicbot;
 
 
-import com.djusufcompany.discordmusicbot.commands.Exit;
-import com.djusufcompany.discordmusicbot.commands.Help;
-import com.djusufcompany.discordmusicbot.commands.Next;
-import com.djusufcompany.discordmusicbot.commands.Play;
+import com.djusufcompany.discordmusicbot.commands.Command;
+import com.djusufcompany.discordmusicbot.commands.CommandsGenerator;
+import java.util.ArrayList;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -15,32 +14,30 @@ public class MessageHandler extends ListenerAdapter
     @Override
     public void onMessageReceived(MessageReceivedEvent event)
     {
-        String message = event.getMessage().getContentRaw();
-        if (message.charAt(0) != '-')
+        String message = null;
+        try
         {
-            return;
-        }
+            message = event.getMessage().getContentRaw();
+            if (message.charAt(0) != '-')
+            {
+                return;
+            }
 
-        MessageChannel channel = event.getMessage().getChannel();
-        String command = (message.substring(1)).split(" ")[0];
+            String inputCommand = (message.substring(1)).split(" ")[0];
 
-        if (command.equalsIgnoreCase("play"))
-        {
-            Play.execute(event);
+            ArrayList<Command> commands = CommandsGenerator.getCommands();
+            for (Command command : commands)
+            {
+                if (inputCommand.equals(command.getCommandName()))
+                {
+                    command.execute(event);
+                }
+            }
         }
-        else if (command.equalsIgnoreCase("help"))
+        catch (Exception e)
         {
-            Help.execute(event);
-        }
-        else if (command.equalsIgnoreCase("exit"))
-        {
-            Exit.execute(event);
-        }
-        else if (command.equalsIgnoreCase("skip"))
-        {
-            Next.execute(event);
+
         }
     }
-
 }
 

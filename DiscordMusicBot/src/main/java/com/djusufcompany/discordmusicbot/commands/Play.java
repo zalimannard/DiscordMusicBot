@@ -8,13 +8,31 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 
-public abstract class Play
+public class Play extends CommandData implements Command
 {
-    public static void execute(MessageReceivedEvent event)
+    private static Play INSTANCE;
+
+    private Play()
+    {
+        commandName = "play";
+        arguments = "(url)";
+        description = "Добавление трека в очередь";
+    }
+
+    public static Play getInstance()
+    {
+        if (INSTANCE == null)
+        {
+            INSTANCE = new Play();
+        }
+        return INSTANCE;
+    }
+
+    public void execute(MessageReceivedEvent event)
     {
         Member member = event.getMember();
         String trackUrl = event.getMessage().getContentRaw().split(" ")[1];
-        
+
         if (member.getVoiceState().inVoiceChannel())
         {
             final AudioManager audioManager = member.getGuild().getAudioManager();
