@@ -4,7 +4,7 @@ package com.djusufcompany.discordmusicbot.commands;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Exit extends CommandData implements Command
+public class Exit extends Command
 {
     private static Exit INSTANCE;
 

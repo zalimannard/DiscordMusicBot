@@ -7,7 +7,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Help extends CommandData implements Command
+public class Help extends Command
 {
     private static Help INSTANCE;
 
@@ -33,11 +33,11 @@ public class Help extends CommandData implements Command
         help.setColor(Color.decode("#2ECC71"));
 
         ArrayList<Command> commands = CommandsGenerator.getCommands();
-        
+
         for (Command command : commands)
         {
             help.addField(command.getCommandName() + " " + command.getArguments(),
-                command.getDescription(), false);
+                    command.getDescription(), false);
         }
 
         event.getChannel().sendMessage(help.build()).queue();

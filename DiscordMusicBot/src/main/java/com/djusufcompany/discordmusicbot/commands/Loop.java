@@ -5,7 +5,7 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Loop extends CommandData implements Command
+public class Loop extends Command
 {
     private static Loop INSTANCE;
 

@@ -9,7 +9,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Queue extends CommandData implements Command
+public class Queue extends Command
 {
     private static Queue INSTANCE;
 

@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Info extends CommandData implements Command
+public class Info extends Command
 {
     private static Info INSTANCE;
 

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.djusufcompany.discordmusicbot.commands;
 
 
@@ -10,7 +5,7 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Loopq extends CommandData implements Command
+public class Loopq extends Command
 {
     private static Loopq INSTANCE;
 

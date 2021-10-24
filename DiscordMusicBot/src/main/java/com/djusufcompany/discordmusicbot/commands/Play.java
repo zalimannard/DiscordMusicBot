@@ -8,7 +8,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 
-public class Play extends CommandData implements Command
+public class Play extends Command
 {
     private static Play INSTANCE;
 

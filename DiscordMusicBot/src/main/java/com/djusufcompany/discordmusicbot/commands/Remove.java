@@ -5,7 +5,7 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Remove extends CommandData implements Command
+public class Remove extends Command
 {
     private static Remove INSTANCE;
 

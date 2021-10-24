@@ -5,7 +5,7 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Skip extends CommandData implements Command
+public class Skip extends Command
 {
     private static Skip INSTANCE;
 

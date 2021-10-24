@@ -30,6 +30,7 @@ public class TrackScheduler extends AudioEventAdapter
     private Integer downloadReserve = Integer.valueOf(ConfProperties.getProperty("downloadReserve"));
     private Boolean isTrackLooped = false;
     private Boolean isQueueLooped = false;
+    private File outputDir = null;
 
     public TrackScheduler(AudioPlayer player, Guild guild)
     {
@@ -54,7 +55,6 @@ public class TrackScheduler extends AudioEventAdapter
         {
             nextTrack();
         }
-        System.out.println("Add CurrentTrackNumber: " + currentTrackNumber);
     }
 
     public void play(AudioTrack track)
@@ -82,35 +82,24 @@ public class TrackScheduler extends AudioEventAdapter
     {
         if (currentTrackNumber + downloaded.size() < queue.size())
         {
-            //System.out.println("Загрузка трека из !internet!");
-            //System.out.println("Размер очереди: " + queue.size() + "; Индекс: " + (currentTrackNumber + downloadReserve));
-            //System.out.println("URL: " + queue.get(currentTrackNumber + downloadReserve - 1).getUrl());
             Response<File> loadTrackFromUrl = loadTrackFromUrl(queue.get(currentTrackNumber + downloadReserve - 1).getUrl());
-            //System.out.println("Добавление трека в загруженные");
             downloaded.add(loadTrackFromUrl);
         }
 
         if (downloaded.size() == 0)
         {
-            //System.out.println("Размер буфера равен нулю");
             if ((isQueueLooped) && (queue.size() > 0))
             {
-                //System.out.println("Очередь зациклена");
                 ArrayList<TrackInfo> tmpQueue = (ArrayList<TrackInfo>) queue.clone();
-                //System.out.println("Очередь скопирована");
                 Integer size = PlayerManager.getInstance().getMusicManager(guild).scheduler.getQueueInfo().size();
-                //System.out.println("Получение размера очереди: " + size);
                 for (int i = 0; i < size; i += 1)
                 {
                     PlayerManager.getInstance().getMusicManager(guild).scheduler.remove(0);
-                    //System.out.println("Удаление " + i + "-го элемента. Количество элементов очереди: " + queue.size());
                 }
                 for (int i = 0; i < tmpQueue.size(); i += 1)
                 {
                     addToQueue(tmpQueue.get(i).getUrl());
-                    //System.out.println("Добавление " + i + "-го элемента. Количество элементов очереди: " + queue.size());
                 }
-                //System.out.println("nextTrack: currentTrackNumber: " + currentTrackNumber);
             }
             else
             {
@@ -146,84 +135,51 @@ public class TrackScheduler extends AudioEventAdapter
 
     public void remove(Integer id)
     {
-        System.out.println("Удаление трека с индексом " + id);
         if ((id >= 0) && (id < queue.size()))
         {
-            System.out.println("id корректный");
             queue.remove(queue.get(id));
-            System.out.println("Элемент удалён из очереди");
             if (id == currentTrackNumber)
             {
                 System.out.println("Тип удаления 1");
-                //currentTrackNumber += 1;
                 downloaded.get(0).data().delete();
-                System.out.println("Удаление из очереди элемента " + (id - currentTrackNumber));
                 downloaded.remove(0);
-                System.out.println("Переход к следующему треку");
                 skip();
-                
-//                downloaded.get(id - currentTrackNumber).data().delete();
-//                downloaded.remove(downloaded.get(id - currentTrackNumber));
-//                if (downloaded.size() != 0)
-//                {
-//                    currentTrackNumber -= 1;
-//                }
-//                skip();
-//                System.out.println("remove 1 тип currentTrackNumber: " + currentTrackNumber);
             }
             else if (id < currentTrackNumber)
             {
-                System.out.println("Тип удаления 2");
                 currentTrackNumber -= 1;
-                System.out.println("remove 2 тип currentTrackNumber: " + currentTrackNumber);
             }
             else if (currentTrackNumber + downloadReserve > id)
             {
-                System.out.println("Тип удаления 3");
                 downloaded.get(id - currentTrackNumber).data().delete();
-                downloaded.remove(downloaded.get(id - currentTrackNumber));
+                downloaded.remove(id - currentTrackNumber);
                 if (currentTrackNumber + downloadReserve - 1 < queue.size())
                 {
                     downloaded.add(loadTrackFromUrl(queue.get(currentTrackNumber + downloadReserve - 1).getUrl()));
                 }
-
-                
-
-                System.out.println("remove 3 тип currentTrackNumber: " + currentTrackNumber);
             }
         }
     }
 
     private Response<File> loadTrackFromUrl(String url)
     {
-        System.out.println("Загрузка видео по адресу: " + url);
         YoutubeDownloader downloader = new YoutubeDownloader();
         VideoInfo video = getVideoInfo(downloader, url);
 
         Format format = video.bestAudioFormat();
         if (format == null)
         {
-            System.out.println("У трека нет аудио-версии");
             format = video.bestVideoFormat();
         }
         if (format != null)
         {
-            File outputDir = null;
-            try
+            if (outputDir == null)
             {
-                outputDir = Files.createTempDirectory("video").toFile();
-
+                createOutputDir();
             }
-            catch (IOException ex)
-            {
-                Logger.getLogger(TrackScheduler.class
-                        .getName()).log(Level.SEVERE, null, ex);
-            }
-            System.out.println("Папка для вывода: " + outputDir.getAbsolutePath());
             RequestVideoFileDownload requestFile = new RequestVideoFileDownload(format)
                     .saveTo(outputDir)
                     .renameTo("video");
-            System.out.println("Запрос");
             return downloader.downloadVideoFile(requestFile);
         }
         return null;
@@ -280,6 +236,20 @@ public class TrackScheduler extends AudioEventAdapter
         RequestVideoInfo requestInfo = new RequestVideoInfo(videoId);
         Response<VideoInfo> responseInfo = downloader.getVideoInfo(requestInfo);
         return responseInfo.data();
+    }
+
+    public void createOutputDir()
+    {
+        try
+        {
+            outputDir = Files.createTempDirectory("video").toFile();
+
+        }
+        catch (IOException ex)
+        {
+            Logger.getLogger(TrackScheduler.class
+                    .getName()).log(Level.SEVERE, null, ex);
+        }
     }
 }
 
