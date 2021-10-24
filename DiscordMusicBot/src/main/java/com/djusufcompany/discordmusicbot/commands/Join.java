@@ -8,22 +8,22 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 
-public class Play extends Command
-{
-    private static Play INSTANCE;
 
-    private Play()
+public class Join extends Command
+{
+    private static Join INSTANCE;
+
+    private Join()
     {
-        commandName = "play";
-        arguments = "(url)";
-        description = "Добавление трека в очередь";
+        commandName = "join";
+        description = "Добавить бота в голосовой чат";
     }
 
-    public static Play getInstance()
+    public static Join getInstance()
     {
         if (INSTANCE == null)
         {
-            INSTANCE = new Play();
+            INSTANCE = new Join();
         }
         return INSTANCE;
     }
@@ -31,7 +31,6 @@ public class Play extends Command
     public void execute(MessageReceivedEvent event)
     {
         Member member = event.getMember();
-        String trackUrl = event.getMessage().getContentRaw().split(" ")[1];
 
         if (member.getVoiceState().inVoiceChannel())
         {
@@ -39,9 +38,8 @@ public class Play extends Command
             final VoiceChannel memberChannel = member.getVoiceState().getChannel();
 
             audioManager.openAudioConnection(memberChannel);
-            PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler.addToQueue(trackUrl);
         }
+        
         PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.resume();
     }
 }
-

@@ -13,13 +13,21 @@ public abstract class CommandsGenerator
         {
             Play.getInstance(),
             Skip.getInstance(),
+            Skipto.getInstance(),
+            Prev.getInstance(),
+            Insert.getInstance(),
             Info.getInstance(),
             Queue.getInstance(),
             Loop.getInstance(),
             Loopq.getInstance(),
             Remove.getInstance(),
             Clear.getInstance(),
+            Pause.getInstance(),
+            Resume.getInstance(),
+            Join.getInstance(),
+            Shuffle.getInstance(),
             Exit.getInstance(),
+            Lasttrack.getInstance(),
             Help.getInstance()
         };
         return new ArrayList<>(Arrays.asList(commandsArray));

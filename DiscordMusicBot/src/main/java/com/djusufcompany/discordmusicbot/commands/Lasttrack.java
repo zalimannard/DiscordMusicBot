@@ -8,22 +8,22 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 
-public class Play extends Command
-{
-    private static Play INSTANCE;
 
-    private Play()
+public class Lasttrack extends Command
+{
+    private static Lasttrack INSTANCE;
+
+    private Lasttrack()
     {
-        commandName = "play";
-        arguments = "(url)";
-        description = "Добавление трека в очередь";
+        commandName = "lasttrack";
+        description = "Добавление в очередь DJ Yousuf \"Последний трек\"";
     }
 
-    public static Play getInstance()
+    public static Lasttrack getInstance()
     {
         if (INSTANCE == null)
         {
-            INSTANCE = new Play();
+            INSTANCE = new Lasttrack();
         }
         return INSTANCE;
     }
@@ -31,7 +31,7 @@ public class Play extends Command
     public void execute(MessageReceivedEvent event)
     {
         Member member = event.getMember();
-        String trackUrl = event.getMessage().getContentRaw().split(" ")[1];
+        String trackUrl = "https://youtu.be/7-JnqyEpEXM";
 
         if (member.getVoiceState().inVoiceChannel())
         {

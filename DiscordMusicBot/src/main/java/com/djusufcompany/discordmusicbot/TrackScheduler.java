@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.dv8tion.jda.api.entities.Guild;
@@ -31,6 +32,7 @@ public class TrackScheduler extends AudioEventAdapter
     private Boolean isTrackLooped = false;
     private Boolean isQueueLooped = false;
     private File outputDir = null;
+    private Boolean isNotNextTrack = false;
 
     public TrackScheduler(AudioPlayer player, Guild guild)
     {
@@ -65,22 +67,26 @@ public class TrackScheduler extends AudioEventAdapter
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason)
     {
-        if (isTrackLooped)
+        if (!isNotNextTrack)
         {
-            playTopTrack();
+            if (isTrackLooped)
+            {
+                playTopTrack();
+            }
+            else
+            {
+                currentTrackNumber += 1;
+                downloaded.get(0).data().delete();
+                downloaded.remove(0);
+                nextTrack();
+            }
         }
-        else
-        {
-            currentTrackNumber += 1;
-            downloaded.get(0).data().delete();
-            downloaded.remove(0);
-            nextTrack();
-        }
+        isNotNextTrack = false;
     }
 
     public void nextTrack()
     {
-        if (currentTrackNumber + downloaded.size() < queue.size())
+        if (currentTrackNumber + downloadReserve - 1 < queue.size())
         {
             Response<File> loadTrackFromUrl = loadTrackFromUrl(queue.get(currentTrackNumber + downloadReserve - 1).getUrl());
             downloaded.add(loadTrackFromUrl);
@@ -130,7 +136,6 @@ public class TrackScheduler extends AudioEventAdapter
     public void skip()
     {
         player.stopTrack();
-        nextTrack();
     }
 
     public void remove(Integer id)
@@ -140,7 +145,6 @@ public class TrackScheduler extends AudioEventAdapter
             queue.remove(queue.get(id));
             if (id == currentTrackNumber)
             {
-                System.out.println("Тип удаления 1");
                 downloaded.get(0).data().delete();
                 downloaded.remove(0);
                 skip();
@@ -250,6 +254,123 @@ public class TrackScheduler extends AudioEventAdapter
             Logger.getLogger(TrackScheduler.class
                     .getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    public void shuffle()
+    {
+        ArrayList<TrackInfo> tmpQueue = (ArrayList<TrackInfo>) queue.clone();
+        tmpQueue.remove(tmpQueue.get(currentTrackNumber));
+        // 3 разных цикла для предотвращения закачки файлов
+        // Слева от текущего
+        for (int i = 0; i < currentTrackNumber; i += 1)
+        {
+            queue.remove(queue.get(0));
+        }
+        // Справа от текущего + предзагруженых
+        Integer queueSize = queue.size();
+        for (int i = downloadReserve; i < queueSize; i += 1)
+        {
+            queue.remove(queue.get(downloadReserve));
+        }
+        // Оставшиеся
+        queueSize = queue.size();
+        for (int i = 1; i < queueSize; i += 1)
+        {
+            queue.remove(queue.get(1));
+            downloaded.get(1).data().delete();
+            downloaded.remove(1);
+        }
+        Random random = new Random();
+        while (tmpQueue.size() > 0)
+        {
+            Integer number = random.nextInt(tmpQueue.size());
+            addToQueue(tmpQueue.get(number).getUrl());
+            tmpQueue.remove(tmpQueue.get(number));
+        }
+        currentTrackNumber = 0;
+    }
+
+    public void previousTrack()
+    {
+        if (currentTrackNumber > 0)
+        {
+            if (downloaded.size() == downloadReserve)
+            {
+                downloaded.remove(downloaded.size() - 1);
+            }
+            Response<File> loadTrackFromUrl = loadTrackFromUrl(queue.get(currentTrackNumber - 1).getUrl());
+            downloaded.add(0, loadTrackFromUrl);
+            isNotNextTrack = true;
+            player.stopTrack();
+            playTopTrack();
+            currentTrackNumber -= 1;
+        }
+    }
+
+    public void skipTo(Integer id)
+    {
+        if ((id >= 0) && (id < queue.size()))
+        {
+            isNotNextTrack = true;
+            player.stopTrack();
+            Integer downloadedSize = downloaded.size();
+            for (int i = 0; i < downloadedSize; i += 1)
+            {
+                downloaded.get(0).data().delete();
+                downloaded.remove(0);
+            }
+            currentTrackNumber = id;
+            for (int i = currentTrackNumber; i < Math.min(queue.size(), currentTrackNumber + downloadReserve); i += 1)
+            {
+                downloaded.add(loadTrackFromUrl(queue.get(i).getUrl()));
+            }
+            playTopTrack();
+        }
+    }
+
+    public void insert(Integer id, String url)
+    {
+        if ((id >= 0) && (id < queue.size()))
+        {
+            while (downloaded.size() > 1)
+            {
+                downloaded.get(1).data().delete();
+                downloaded.remove(1);
+            }
+
+            YoutubeDownloader downloader = new YoutubeDownloader();
+            VideoInfo video = getVideoInfo(downloader, url);
+            queue.add(id + 1, new TrackInfo(video.details().author(), video.details().title(), url));
+
+            if (id < currentTrackNumber)
+            {
+                currentTrackNumber += 1;
+            }
+            for (int i = currentTrackNumber + 1; i < Math.min(queue.size(), currentTrackNumber + downloadReserve); i += 1)
+            {
+                downloaded.add(loadTrackFromUrl(queue.get(i).getUrl()));
+            }
+        }
+    }
+
+    public void pause()
+    {
+        player.setPaused(true);
+    }
+
+    public void resume()
+    {
+        player.setPaused(false);
+    }
+
+    public Boolean getIsTrackLooped()
+    {
+        return isTrackLooped;
+    }
+
+    public Boolean getIsQueueLooped()
+    {
+        return isQueueLooped;
     }
 }
 

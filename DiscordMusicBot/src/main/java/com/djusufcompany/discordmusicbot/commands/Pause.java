@@ -5,28 +5,27 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Exit extends Command
+public class Pause extends Command
 {
-    private static Exit INSTANCE;
+    private static Pause INSTANCE;
 
-    private Exit()
+    private Pause()
     {
-        commandName = "exit";
-        description = "Отключение бота от канала без очищения очереди";
+        commandName = "pause";
+        description = "Остановить трек";
     }
 
-    public static Exit getInstance()
+    public static Pause getInstance()
     {
         if (INSTANCE == null)
         {
-            INSTANCE = new Exit();
+            INSTANCE = new Pause();
         }
         return INSTANCE;
     }
 
     public void execute(MessageReceivedEvent event)
     {
-        event.getMember().getGuild().getAudioManager().closeAudioConnection();
         PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
     }
 }
