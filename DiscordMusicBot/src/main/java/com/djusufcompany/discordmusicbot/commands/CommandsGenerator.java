@@ -15,7 +15,10 @@ public abstract class CommandsGenerator
             Skip.getInstance(),
             Info.getInstance(),
             Queue.getInstance(),
+            Loop.getInstance(),
+            Loopq.getInstance(),
             Remove.getInstance(),
+            Clear.getInstance(),
             Exit.getInstance(),
             Help.getInstance()
         };

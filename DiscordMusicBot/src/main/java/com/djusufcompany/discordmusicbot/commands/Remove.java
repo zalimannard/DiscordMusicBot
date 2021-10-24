@@ -12,7 +12,7 @@ public class Remove extends CommandData implements Command
     private Remove()
     {
         commandName = "remove";
-        arguments = "(id)";
+        arguments = "(id) / (id-id)";
         description = "Удаление трека из очереди по номеру";
     }
 
@@ -27,9 +27,14 @@ public class Remove extends CommandData implements Command
 
     public void execute(MessageReceivedEvent event)
     {
-        Integer id = Integer.valueOf(event.getMessage().getContentRaw().split(" ")[1]) - 1;
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.remove(id);
-        System.out.println("ABOBA");
+        String message = event.getMessage().getContentRaw().substring(2 + commandName.length());
+        String indexes[] = message.split("-");
+        Integer start = Integer.valueOf(indexes[0]) - 1;
+        Integer end = Integer.valueOf(indexes[indexes.length - 1]) - 1;
+        for (int id = start; id <= end; id += 1)
+        {
+            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.remove(start);
+        }
         Queue.getInstance().execute(event);
     }
 }

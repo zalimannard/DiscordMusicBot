@@ -11,17 +11,10 @@ public class Main
 {
     public static void main(String[] args) throws LoginException
     {
-        if (args.length < 1)
-        {
-            System.out.println("Токен не введён");
-        }
-        else
-        {
-            JDA jda = JDABuilder.createDefault(args[0])
-                    .addEventListeners(new MessageHandler())
-                    .setActivity(Activity.playing("School Simulator"))
-                    .build();
-        }
+        JDA jda = JDABuilder.createDefault(ConfProperties.getProperty("token"))
+                .addEventListeners(new MessageHandler())
+                .setActivity(Activity.playing("School Simulator"))
+                .build();
     }
 }
 

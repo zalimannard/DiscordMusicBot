@@ -1,6 +1,7 @@
 package com.djusufcompany.discordmusicbot.commands;
 
 
+import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -11,7 +12,7 @@ public class Loop extends CommandData implements Command
     private Loop()
     {
         commandName = "loop";
-        description = "Зацикливание текущего трека";
+        description = "Вкл./Выкл. зацикливание трека";
     }
 
     public static Loop getInstance()
@@ -25,7 +26,7 @@ public class Loop extends CommandData implements Command
 
     public void execute(MessageReceivedEvent event)
     {
-        //TODO
+        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.changeTrackLoopMode();
     }
 }
 

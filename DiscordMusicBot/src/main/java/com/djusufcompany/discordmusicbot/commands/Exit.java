@@ -11,7 +11,7 @@ public class Exit extends CommandData implements Command
     private Exit()
     {
         commandName = "exit";
-        description = "Отключение бота от канала";
+        description = "Отключение бота от канала без очищения очереди";
     }
 
     public static Exit getInstance()
