@@ -7,8 +7,8 @@
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
     
     <repositories>
@@ -43,6 +43,7 @@
             <artifactId>java-youtube-downloader</artifactId>
             <version>3.0.2</version>
         </dependency>
+        
     </dependencies>
 
     <build>
@@ -57,25 +58,27 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.4.1</version>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>appassembler-maven-plugin</artifactId>
+                <version>1.1.1</version>
                 <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.djusufcompany.discordbot.MainApplication</mainClass>
-                        </manifest>
-                    </archive>
+                    <assembleDirectory>target</assembleDirectory>
+                    <programs>
+                        <program>
+                            <mainClass>MainApplication</mainClass>
+                            <name>worker</name>
+                        </program>
+                        <program>
+                            <mainClass>com.djusufcompany.discordbot.OneOffProcess</mainClass>
+                            <name>oneoff</name>
+                        </program>
+                    </programs>
                 </configuration>
                 <executions>
                     <execution>
-                        <id>make-assembly</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>single</goal>
+                            <goal>assemble</goal>
                         </goals>
                     </execution>
                 </executions>

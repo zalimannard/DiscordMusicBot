@@ -3,7 +3,9 @@ package com.djusufcompany.discordmusicbot.commands;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -36,11 +38,11 @@ public class Help extends Command
 
         for (Command command : commands)
         {
-            help.addField(command.getCommandName() + " " + command.getArguments(),
+            help.addField("-" + command.getCommandName() + " " + command.getArguments(),
                     command.getDescription(), false);
         }
 
-        event.getChannel().sendMessage(help.build()).queue();
+        event.getChannel().sendMessage(help.build()).delay(180, TimeUnit.SECONDS).flatMap(Message::delete).submit();
     }
 }
 

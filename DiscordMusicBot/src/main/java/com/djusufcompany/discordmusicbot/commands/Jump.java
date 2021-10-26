@@ -5,22 +5,22 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-public class Skipto extends Command
+public class Jump extends Command
 {
-    private static Skipto INSTANCE;
+    private static Jump INSTANCE;
 
-    private Skipto()
+    private Jump()
     {
-        commandName = "skipto";
+        commandName = "jump";
         arguments = "(id)";
         description = "Переход к указанному в очереди";
     }
 
-    public static Skipto getInstance()
+    public static Jump getInstance()
     {
         if (INSTANCE == null)
         {
-            INSTANCE = new Skipto();
+            INSTANCE = new Jump();
         }
         return INSTANCE;
     }
@@ -28,7 +28,7 @@ public class Skipto extends Command
     public void execute(MessageReceivedEvent event)
     {
         Integer number = Integer.valueOf(event.getMessage().getContentRaw().substring(2 + commandName.length()));
-        PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.skipTo(number - 1);
+        PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.jump(number - 1);
     }
 }
 

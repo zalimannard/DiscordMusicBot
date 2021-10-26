@@ -2,6 +2,10 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import java.awt.Color;
+import java.util.concurrent.TimeUnit;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -29,8 +33,13 @@ public class Clear extends Command
         Integer size = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.getQueueInfo().size();
         for (int i = 0; i < size; i++)
         {
-            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.remove(0);
+            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.clear();
         }
+        
+        EmbedBuilder queueEmbed = new EmbedBuilder();
+        queueEmbed.setColor(Color.decode("#2ECC71"));
+        queueEmbed.setTitle("Очередь очищена");
+        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
     }
 }
 

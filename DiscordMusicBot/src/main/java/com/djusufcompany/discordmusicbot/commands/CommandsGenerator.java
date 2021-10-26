@@ -12,8 +12,10 @@ public abstract class CommandsGenerator
         Command[] commandsArray =
         {
             Play.getInstance(),
+            Playlist.getInstance(),
             Skip.getInstance(),
-            Skipto.getInstance(),
+            Jump.getInstance(),
+            Rewind.getInstance(),
             Prev.getInstance(),
             Insert.getInstance(),
             Info.getInstance(),

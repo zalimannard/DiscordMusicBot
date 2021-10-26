@@ -3,7 +3,9 @@ package com.djusufcompany.discordmusicbot.commands;
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
 import java.awt.Color;
+import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -40,7 +42,7 @@ public class Loop extends Command
         {
             queueEmbed.setTitle("Повторение трека выключено");
         }
-        event.getChannel().sendMessage(queueEmbed.build()).queue();
+        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
     }
 }
 

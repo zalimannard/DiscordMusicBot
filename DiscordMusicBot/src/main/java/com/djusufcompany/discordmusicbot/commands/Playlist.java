@@ -1,3 +1,8 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package com.djusufcompany.discordmusicbot.commands;
 
 
@@ -12,22 +17,23 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
 
 
-public class Play extends Command
-{
-    private static Play INSTANCE;
 
-    private Play()
+public class Playlist extends Command
+{
+    private static Playlist INSTANCE;
+
+    private Playlist()
     {
-        commandName = "play";
+        commandName = "playlist";
         arguments = "(url)";
-        description = "Добавление трека в очередь";
+        description = "Добавление плейлиста в очередь";
     }
 
-    public static Play getInstance()
+    public static Playlist getInstance()
     {
         if (INSTANCE == null)
         {
-            INSTANCE = new Play();
+            INSTANCE = new Playlist();
         }
         return INSTANCE;
     }
@@ -44,7 +50,7 @@ public class Play extends Command
 
             audioManager.openAudioConnection(memberChannel);
             PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler
-                    .addTrackToQueue(
+                    .addPlaylistToQueue(
                             trackUrl,
                             event.getMessage().getTextChannel());
         }
@@ -53,8 +59,7 @@ public class Play extends Command
 
         EmbedBuilder queueEmbed = new EmbedBuilder();
         queueEmbed.setColor(Color.decode("#2ECC71"));
-        String trackName = PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler.getTrackInfo("New").getTitle();
-        queueEmbed.setTitle("Трек \"" + trackName +"\" добавлен в очередь");
+        queueEmbed.setTitle("Плейлист добавлен в очередь");
         event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
     }
 }
