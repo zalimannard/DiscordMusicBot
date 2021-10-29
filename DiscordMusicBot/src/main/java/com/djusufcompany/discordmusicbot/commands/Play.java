@@ -21,9 +21,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
+import org.jsoup.Jsoup;
 import org.json.JSONTokener;
-
-import org.w3c.dom.Document;
 
 
 public class Play extends Command
@@ -100,10 +99,22 @@ public class Play extends Command
                     String url = "https://www.googleapis.com/youtube/v3/search?maxResults=1&q=" + keyword + "&key=AIzaSyANMWEq-XP4vTyPEQFvr9xujOjwikizkIc";
                     String getJson = Jsoup.connect(url).timeout(10 * 1000).ignoreContentType(true).get().text();
 
-                    JSONArray jsonItem = new JSONObject(getJson).getJSONArray("items");
-                    JSONObject item = jsonItem.getJSONObject(0);
-                    JSONObject id = item.getJSONObject("id");
-                    String videoId = id.getString("videoId");
+                    JSONArray jsonItem;
+                    JSONObject item;
+                    JSONObject id;
+                    String videoId = null;
+                    
+                    try
+                    {
+                        jsonItem = new JSONObject(getJson).getJSONArray("items");
+                        item = jsonItem.getJSONObject(0);
+                        id = item.getJSONObject("id");
+                        videoId = id.getString("videoId");
+                    }
+                    catch (JSONException ex)
+                    {
+                        Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
+                    }
 
                     String urlForYoutube = "https://www.youtube.com/watch?v=" + videoId;
 
@@ -117,10 +128,6 @@ public class Play extends Command
 
                 }
                 catch (IOException ex)
-                {
-                    Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                catch (JSONException ex)
                 {
                     Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
                 }
