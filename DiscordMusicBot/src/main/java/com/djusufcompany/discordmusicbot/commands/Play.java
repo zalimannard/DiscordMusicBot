@@ -7,7 +7,6 @@ import com.djusufcompany.discordmusicbot.Video;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,8 +20,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
-import org.jsoup.Jsoup;
-import org.json.JSONTokener;
 
 
 public class Play extends Command
