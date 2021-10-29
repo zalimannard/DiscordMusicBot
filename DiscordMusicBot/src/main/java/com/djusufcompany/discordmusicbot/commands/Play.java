@@ -5,14 +5,25 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import com.djusufcompany.discordmusicbot.TrackScheduler;
 import com.djusufcompany.discordmusicbot.Video;
 import java.awt.Color;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.VoiceChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.json.JSONTokener;
+
+import org.w3c.dom.Document;
 
 
 public class Play extends Command
@@ -22,8 +33,8 @@ public class Play extends Command
     private Play()
     {
         commandName = "play";
-        arguments = "(URL)";
-        description = "Добавление трека/плейлиста в очередь по ссылке/запросу (Запроса пока нет (Это временно (Потом будет)))";
+        arguments = "(URL) / (запрос)";
+        description = "Добавление трека/плейлиста в очередь по ссылке/запросу";
     }
 
     public static Play getInstance()
@@ -81,8 +92,38 @@ public class Play extends Command
             }
             else
             {
-                audioManager.openAudioConnection(memberChannel);
-                // ЗДЕСЬ БУДЕТ ПОИСК
+                try
+                {
+                    audioManager.openAudioConnection(memberChannel);
+
+                    String keyword = event.getMessage().getContentRaw().substring(commandName.length() + 2);
+                    String url = "https://www.googleapis.com/youtube/v3/search?maxResults=1&q=" + keyword + "&key=AIzaSyANMWEq-XP4vTyPEQFvr9xujOjwikizkIc";
+                    String getJson = Jsoup.connect(url).timeout(10 * 1000).ignoreContentType(true).get().text();
+
+                    JSONArray jsonItem = new JSONObject(getJson).getJSONArray("items");
+                    JSONObject item = jsonItem.getJSONObject(0);
+                    JSONObject id = item.getJSONObject("id");
+                    String videoId = id.getString("videoId");
+
+                    String urlForYoutube = "https://www.youtube.com/watch?v=" + videoId;
+
+                    audioManager.openAudioConnection(memberChannel);
+                    scheduler.insertTrack(scheduler.getQueueSize(), urlForYoutube);
+                    scheduler.resume();
+
+                    String trackName = scheduler.getTrackInfo(scheduler.getQueueSize()).getTitle();
+                    queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь");
+                    event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+
+                }
+                catch (IOException ex)
+                {
+                    Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                catch (JSONException ex)
+                {
+                    Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
     }

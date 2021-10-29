@@ -18,7 +18,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.dv8tion.jda.api.entities.Guild;
 
-
 public class TrackScheduler extends AudioEventAdapter
 {
     private final Integer downloadReserve;
@@ -241,11 +240,9 @@ public class TrackScheduler extends AudioEventAdapter
         Integer idDeletingTrack = number - 1;
         if ((idDeletingTrack >= 0) && (idDeletingTrack < queue.size()))
         {
-            System.out.println("Предзагружнных: " + downloaded.size() + "; Удаление: " + number);
             queue.remove(queue.get(idDeletingTrack));
             if (idDeletingTrack == idCurrentTrack)
             {
-                System.out.println("Удаление текущего");
                 downloaded.get(0).data().delete();
                 downloaded.remove(0);
                 if (idCurrentTrack + downloadReserve - 1 < queue.size())
@@ -270,17 +267,14 @@ public class TrackScheduler extends AudioEventAdapter
             }
             else if (idDeletingTrack < idCurrentTrack)
             {
-                System.out.println("Удаление до");
                 idCurrentTrack -= 1;
             }
             else if (idDeletingTrack - idCurrentTrack < downloadReserve)
             {
-                System.out.println("Удаление после");
                 downloaded.get(idDeletingTrack - idCurrentTrack).data().delete();
                 downloaded.remove(idDeletingTrack - idCurrentTrack);
                 if (idCurrentTrack + downloadReserve - 1 < queue.size())
                 {
-                    System.out.println("B");
                     downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getUrl()));
                 }
             }
