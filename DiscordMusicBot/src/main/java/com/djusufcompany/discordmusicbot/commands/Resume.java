@@ -31,16 +31,15 @@ public class Resume extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        Member member = event.getMember();
-        if (member.getGuild().getAudioManager().isConnected())
+        if (event.getMember().getVoiceState().inVoiceChannel())
         {
             PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.resume();
-        }
 
-        EmbedBuilder queueEmbed = new EmbedBuilder();
-        queueEmbed.setColor(Color.decode("#2ECC71"));
-        queueEmbed.setTitle("Воспроизведение продолжено");
-        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+            EmbedBuilder queueEmbed = new EmbedBuilder();
+            queueEmbed.setColor(Color.decode("#2ECC71"));
+            queueEmbed.setTitle("Воспроизведение продолжено");
+            event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        }
     }
 }
 

@@ -14,6 +14,13 @@ public class TrackInfo
         this.url = url;
     }
 
+    public TrackInfo(TrackInfo info)
+    {
+        this.author = info.getAuthor();
+        this.title = info.getTitle();
+        this.url = info.getUrl();
+    }
+
     public String getAuthor()
     {
         return author;

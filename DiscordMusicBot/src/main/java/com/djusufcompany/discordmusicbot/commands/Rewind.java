@@ -5,7 +5,6 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-
 public class Rewind extends Command
 {
     private static Rewind INSTANCE;
@@ -13,7 +12,7 @@ public class Rewind extends Command
     private Rewind()
     {
         commandName = "rewind";
-        arguments = "(s) / (m.s) / (h.m.s)";
+        arguments = "(S) / (M:S) / (H:M:S)";
         description = "Перемотать текущий трек в указанную позицию";
     }
 
@@ -28,8 +27,12 @@ public class Rewind extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        String argument = event.getMessage().getContentRaw().split(" ")[1];
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.setTrackTime(argument);
-        Info.getInstance().execute(event);
+        if (event.getMember().getVoiceState().inVoiceChannel())
+        {
+            String argument = event.getMessage().getContentRaw().split(" ")[1];
+            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.setTrackTime(argument);
+            Info.getInstance().execute(event);
+        }
     }
 }
+

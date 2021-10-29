@@ -30,13 +30,16 @@ public class Exit extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        event.getMember().getGuild().getAudioManager().closeAudioConnection();
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
-        
-        EmbedBuilder queueEmbed = new EmbedBuilder();
-        queueEmbed.setColor(Color.decode("#2ECC71"));
-        queueEmbed.setTitle("Пока-пока");
-        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        if (event.getMember().getVoiceState().inVoiceChannel())
+        {
+            event.getMember().getGuild().getAudioManager().closeAudioConnection();
+            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
+
+            EmbedBuilder queueEmbed = new EmbedBuilder();
+            queueEmbed.setColor(Color.decode("#2ECC71"));
+            queueEmbed.setTitle("Пока-пока");
+            event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        }
     }
 }
 

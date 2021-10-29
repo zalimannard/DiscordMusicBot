@@ -2,12 +2,17 @@ package com.djusufcompany.discordmusicbot;
 
 
 import com.github.kiulian.downloader.YoutubeDownloader;
+import com.github.kiulian.downloader.downloader.request.RequestPlaylistInfo;
 import com.github.kiulian.downloader.downloader.request.RequestVideoFileDownload;
 import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
 import com.github.kiulian.downloader.downloader.response.Response;
+import com.github.kiulian.downloader.model.playlist.PlaylistInfo;
+import com.github.kiulian.downloader.model.playlist.PlaylistVideoDetails;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
 import com.github.kiulian.downloader.model.videos.formats.Format;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public abstract class Video
@@ -20,7 +25,7 @@ public abstract class Video
         Format format = video.bestAudioFormat();
         if (format == null)
         {
-            format = video.bestVideoFormat();
+            format = video.bestVideoWithAudioFormat();
         }
         if (format != null)
         {
@@ -32,6 +37,34 @@ public abstract class Video
         return null;
     }
 
+    public static ArrayList<String> getTracksUrlFromPlaylist(String url)
+    {
+        ArrayList<String> answer = new ArrayList<String>();
+        String playlistId = null;
+        String[] urlTypeArray =
+        {
+            "https://www.youtube.com/playlist?list=",
+            "https://youtube.com/playlist?list="
+        };
+        for (String urlType : urlTypeArray)
+        {
+            if (url.contains(urlType))
+            {
+                playlistId = url.substring(urlType.length());
+            }
+        }
+        YoutubeDownloader downloader = new YoutubeDownloader();
+        RequestPlaylistInfo request = new RequestPlaylistInfo(playlistId);
+        Response<PlaylistInfo> response = downloader.getPlaylistInfo(request);
+        PlaylistInfo playlistInfo = response.data();
+        List<PlaylistVideoDetails> tracks = playlistInfo.videos();
+        for (PlaylistVideoDetails track : tracks)
+        {
+            answer.add("https://www.youtube.com/watch?v=" + track.videoId());
+        }
+        return answer;
+    }
+    
     public static String urlToId(String url)
     {
         String videoId = null;

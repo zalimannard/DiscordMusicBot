@@ -2,7 +2,10 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.VoiceChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.managers.AudioManager;
 
 
 public class Jump extends Command
@@ -12,7 +15,7 @@ public class Jump extends Command
     private Jump()
     {
         commandName = "jump";
-        arguments = "(id)";
+        arguments = "(ID)";
         description = "Переход к указанному в очереди";
     }
 
@@ -27,8 +30,16 @@ public class Jump extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        Integer number = Integer.valueOf(event.getMessage().getContentRaw().substring(2 + commandName.length()));
-        PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.jump(number - 1);
+        Member member = event.getMember();
+        if (member.getVoiceState().inVoiceChannel())
+        {
+            final AudioManager audioManager = member.getGuild().getAudioManager();
+            final VoiceChannel memberChannel = member.getVoiceState().getChannel();
+            audioManager.openAudioConnection(memberChannel);
+            
+            Integer number = Integer.valueOf(event.getMessage().getContentRaw().substring(2 + commandName.length()));
+            PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.jumpTo(number);
+        }
     }
 }
 

@@ -4,8 +4,6 @@ package com.djusufcompany.discordmusicbot;
 import com.djusufcompany.discordmusicbot.commands.Command;
 import com.djusufcompany.discordmusicbot.commands.CommandsGenerator;
 import java.util.ArrayList;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceLeaveEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;

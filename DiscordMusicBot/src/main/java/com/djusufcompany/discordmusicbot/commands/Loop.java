@@ -2,6 +2,7 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import com.djusufcompany.discordmusicbot.TrackScheduler;
 import java.awt.Color;
 import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -30,19 +31,23 @@ public class Loop extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.changeTrackLoopMode();
-        
-        EmbedBuilder queueEmbed = new EmbedBuilder();
-        queueEmbed.setColor(Color.decode("#2ECC71"));
-        if (PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.getIsTrackLooped())
+        if (event.getMember().getVoiceState().inVoiceChannel())
         {
-            queueEmbed.setTitle("Повторение трека включено");
+            TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
+            scheduler.changeTrackLoopMode();
+
+            EmbedBuilder queueEmbed = new EmbedBuilder();
+            queueEmbed.setColor(Color.decode("#2ECC71"));
+            if (scheduler.isTrackLooped())
+            {
+                queueEmbed.setTitle("Повторение трека включено");
+            }
+            else
+            {
+                queueEmbed.setTitle("Повторение трека выключено");
+            }
+            event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
         }
-        else
-        {
-            queueEmbed.setTitle("Повторение трека выключено");
-        }
-        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
     }
 }
 

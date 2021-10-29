@@ -1,242 +1,180 @@
 package com.djusufcompany.discordmusicbot;
 
 
+import com.djusufcompany.discordmusicbot.commands.Info;
 import com.github.kiulian.downloader.YoutubeDownloader;
-import com.github.kiulian.downloader.downloader.request.RequestPlaylistInfo;
 import com.github.kiulian.downloader.downloader.response.Response;
-import com.github.kiulian.downloader.model.playlist.PlaylistInfo;
-import com.github.kiulian.downloader.model.playlist.PlaylistVideoDetails;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
-import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.TextChannel;
 
 
 public class TrackScheduler extends AudioEventAdapter
 {
+    private final Integer downloadReserve;
     private final AudioPlayer player;
     private final Guild guild;
+    private File outputDir;
     private ArrayList<TrackInfo> queue;
     private ArrayList<Response<File>> downloaded;
-    private Integer currentTrackNumber = 0;
-    private Integer downloadReserve = 3;
-    private Boolean isTrackLooped = false;
-    private Boolean isQueueLooped = false;
-    private File outputDir = null;
-    private Boolean fromLoadTrack = false;
-    private Boolean endOfTrack = false;
-    TextChannel textChannel = null;
+    private Integer idCurrentTrack;
+    private Boolean isTrackLooped;
+    private Boolean isQueueLooped;
+
+    private Boolean endOfTrack;
+    private Boolean fromJump;
+    private Boolean nothingPlaying;
 
     public TrackScheduler(AudioPlayer player, Guild guild)
     {
+        this.downloadReserve = 3;
         this.player = player;
         this.guild = guild;
         this.queue = new ArrayList<>();
         this.downloaded = new ArrayList<>();
+        this.idCurrentTrack = 0;
+        this.isTrackLooped = false;
+        this.isQueueLooped = false;
 
         try
         {
-            this.outputDir = Files.createTempDirectory("video").toFile();
+            this.outputDir = Files.createTempDirectory("Video").toFile();
         }
         catch (IOException ex)
         {
             Logger.getLogger(TrackScheduler.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+        this.endOfTrack = false;
+        this.fromJump = false;
+        this.nothingPlaying = true;
     }
 
-    public void addTrackToQueue(String url, TextChannel newTextChannel)
+    public void jumpTo(Integer number)
     {
-        textChannel = newTextChannel;
-
-        YoutubeDownloader downloader = new YoutubeDownloader();
-        VideoInfo video = Video.getVideoInfo(downloader, url);
-
-        queue.add(new TrackInfo(video.details().author(), video.details().title(), url));
-
-        if (downloaded.size() < downloadReserve)
+        Integer idNewTrack = number - 1;
+        if ((idNewTrack >= 0) && (idNewTrack < queue.size()))
         {
-            downloaded.add(Video.loadTrackFromUrl(outputDir, url));
-        }
-        if (downloaded.size() == 1)
-        {
-            loadTrack(queue.size() - 1);
-        }
-    }
-
-    public void addPlaylistToQueue(String url, TextChannel newTextChannel)
-    {
-        YoutubeDownloader downloader = new YoutubeDownloader();
-        String playlistId = url.substring("https://www.youtube.com/playlist?list=".length());
-        RequestPlaylistInfo request = new RequestPlaylistInfo(playlistId);
-        Response<PlaylistInfo> response = downloader.getPlaylistInfo(request);
-        PlaylistInfo playlistInfo = response.data();
-        List<PlaylistVideoDetails> tracks = playlistInfo.videos();
-        for (PlaylistVideoDetails track : tracks)
-        {
-            addTrackToQueue("https://www.youtube.com/watch?v=" + track.videoId(), newTextChannel);
-        }
-    }
-
-    public void play(AudioTrack track)
-    {
-        player.startTrack(track, true);
-    }
-
-    public void skip()
-    {
-        if ((isQueueLooped) && (currentTrackNumber + 1 == queue.size()))
-        {
-            loadTrack(0);
-        }
-        else if (currentTrackNumber + 1 == queue.size())
-        {
-            player.stopTrack();
-        }
-        else
-        {
-            loadTrack(currentTrackNumber + 1);
-        }
-    }
-
-    public void remove(Integer id)
-    {
-        if ((id >= 0) && (id < queue.size()))
-        {
-            queue.remove(queue.get(id));
-            if (id == currentTrackNumber)
+            // Если трек закончился не сам
+            if ((!endOfTrack) && (queue.size() > 1))
             {
-                downloaded.get(0).data().delete();
-                downloaded.remove(0);
-                if (downloaded.size() > 0)
+                fromJump = true;
+                if (queue.size() == 0)
                 {
-                    loadTrack(currentTrackNumber);
-                }
-                else if ((isQueueLooped) && (queue.size() > 0))
-                {
-                    loadTrack(0);
-                }
-                else
-                {
-                    endOfTrack = true;
-                    player.stopTrack();
                     guild.getAudioManager().closeAudioConnection();
+                    nothingPlaying = true;
                 }
             }
-            else if (id < currentTrackNumber)
+            // Для случая удаления
+            else if (queue.size() == 0)
             {
-                currentTrackNumber -= 1;
+                fromJump = true;
+                guild.getAudioManager().closeAudioConnection();
+                nothingPlaying = true;
             }
-            else if (currentTrackNumber + downloadReserve > id)
+            player.stopTrack();
+            fromJump = false;
+
+            // Загрузка трека без играющих предыдущих
+            if (downloaded.size() == 0)
             {
-                downloaded.get(id - currentTrackNumber).data().delete();
-                downloaded.remove(id - currentTrackNumber);
-                if (currentTrackNumber + downloadReserve - 1 < queue.size())
+                downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl()));
+                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
+                nothingPlaying = false;
+            }
+            // Загрузка текущего трека
+            else if (idCurrentTrack == idNewTrack)
+            {
+                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
+                nothingPlaying = false;
+            }
+            // Загрузка трека слева от текущего с возможностью сохранения предзагруженных
+            else if ((idNewTrack < idCurrentTrack) && (idCurrentTrack - idNewTrack < downloadReserve))
+            {
+                for (int i = 0; i < idCurrentTrack - idNewTrack; i += 1)
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(currentTrackNumber + downloadReserve - 1).getUrl()));
+                    if (downloaded.size() > downloadReserve)
+                    {
+                        downloaded.get(downloaded.size() - 1).data().delete();
+                        downloaded.remove(downloaded.size() - 1);
+                    }
+                }
+                // Добавление нового проигрываемого трека
+                Response<File> loadPlayingTrackFromUrl = Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl());
+                downloaded.add(0, loadPlayingTrackFromUrl);
+                // Начинаем его играть, чтобы пользователь не ждал
+                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
+                nothingPlaying = false;
+                // Загружаем остальные треки
+                for (int i = 1; i < idCurrentTrack - idNewTrack; i += 1)
+                {
+                    Response<File> loadTrackFromUrl = Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack + i).getUrl());
+                    downloaded.add(0, loadTrackFromUrl);
                 }
             }
+            // Загрузка трека справа от текущего с возможностью сохранения предзагруженных
+            else if ((idNewTrack > idCurrentTrack) && (idNewTrack - idCurrentTrack < downloadReserve))
+            {
+                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(idNewTrack - idCurrentTrack).data().getAbsolutePath());
+                nothingPlaying = false;
+                for (int i = 0; i < idNewTrack - idCurrentTrack; i += 1)
+                {
+                    downloaded.get(0).data().delete();
+                    downloaded.remove(0);
+                }
+                for (int i = idNewTrack + downloaded.size(); i < Math.min(idNewTrack + downloadReserve, queue.size()); i++)
+                {
+                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                }
+            }
+            // Загрузка трека, не затрагивающего предзагруженные
+            else
+            {
+                while (downloaded.size() > 0)
+                {
+                    downloaded.get(0).data().delete();
+                    downloaded.remove(0);
+                }
+                downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl()));
+                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
+                nothingPlaying = false;
+                for (int i = idNewTrack + 1; i < Math.min(idNewTrack + downloadReserve, queue.size()); i++)
+                {
+                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                }
+            }
+            idCurrentTrack = idNewTrack;
+            Info.getInstance().printNowPlaying(queue.get(idCurrentTrack));
+            resume();
         }
     }
 
-    public void clear()
+    public void insertTrack(Integer number, String url)
     {
-        // 3 разных цикла для предотвращения закачки файлов
-        // Слева от текущего
-        for (int i = 0; i < currentTrackNumber; i += 1)
+        Integer id = number;
+        if ((id >= 0) && (id <= queue.size()))
         {
-            remove(0);
-        }
-        // Справа от текущего + предзагруженых
-        Integer queueSize = queue.size();
-        for (int i = downloadReserve; i < queueSize; i += 1)
-        {
-            remove(downloadReserve);
-        }
-        // Предзагруженные
-        queueSize = queue.size();
-        for (int i = queueSize - 1; i >= 0; i -= 1)
-        {
-            remove(i);
-        }
-    }
-
-    public void shuffle()
-    {
-        ArrayList<TrackInfo> tmpQueue = (ArrayList<TrackInfo>) queue.clone();
-        tmpQueue.remove(tmpQueue.get(currentTrackNumber));
-        // 3 разных цикла для предотвращения закачки файлов
-        // Слева от текущего
-        for (int i = 0; i < currentTrackNumber; i += 1)
-        {
-            queue.remove(queue.get(0));
-        }
-        // Справа от текущего + предзагруженых
-        Integer queueSize = queue.size();
-        for (int i = downloadReserve; i < queueSize; i += 1)
-        {
-            queue.remove(queue.get(downloadReserve));
-        }
-        // Предзагруженные
-        queueSize = queue.size();
-        for (int i = 1; i < queueSize; i += 1)
-        {
-            queue.remove(queue.get(1));
-            downloaded.get(1).data().delete();
-            downloaded.remove(1);
-        }
-        Random random = new Random();
-        while (tmpQueue.size() > 0)
-        {
-            Integer number = random.nextInt(tmpQueue.size());
-            addTrackToQueue(tmpQueue.get(number).getUrl(), textChannel);
-            tmpQueue.remove(tmpQueue.get(number));
-        }
-        currentTrackNumber = 0;
-    }
-
-    public void changeTrackLoopMode()
-    {
-        isTrackLooped = !isTrackLooped;
-    }
-
-    public void changeQueueLoopMode()
-    {
-        isQueueLooped = !isQueueLooped;
-    }
-
-    public void previousTrack()
-    {
-        if (currentTrackNumber > 0)
-        {
-            loadTrack(currentTrackNumber - 1);
-        }
-    }
-
-    public void jump(Integer id)
-    {
-        loadTrack(id);
-    }
-
-    public void insert(Integer id, String url)
-    {
-        if ((id >= 0) && (id < queue.size()))
-        {
-            if ((id - currentTrackNumber < downloadReserve) && (currentTrackNumber < id))
+            YoutubeDownloader downloader = null;
+            VideoInfo video = null;
+            try
+            {
+                downloader = new YoutubeDownloader();
+                video = Video.getVideoInfo(downloader, url);
+            }
+            catch (Exception e)
+            {
+            }
+            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
             {
                 while (downloaded.size() > 1)
                 {
@@ -245,83 +183,149 @@ public class TrackScheduler extends AudioEventAdapter
                 }
             }
 
-            YoutubeDownloader downloader = new YoutubeDownloader();
-            VideoInfo video = Video.getVideoInfo(downloader, url);
-            queue.add(id + 1, new TrackInfo(video.details().author(), video.details().title(), url));
-
-            if (id < currentTrackNumber)
+            queue.add(id, new TrackInfo(video.details().author(), video.details().title(), url));
+            if ((id <= idCurrentTrack) && (!nothingPlaying))
             {
-                currentTrackNumber += 1;
+                idCurrentTrack += 1;
             }
-            if ((id - currentTrackNumber < downloadReserve) && (currentTrackNumber < id))
+            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
             {
-                for (int i = currentTrackNumber + 1; i < Math.min(queue.size(), currentTrackNumber + downloadReserve); i += 1)
+                for (int i = idCurrentTrack + 1; i < Math.min(queue.size(), idCurrentTrack + downloadReserve); i += 1)
                 {
                     downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                }
+            }
+            if (nothingPlaying)
+            {
+                jumpTo(number + 1);
+            }
+        }
+    }
+
+    public void insertTrack(Integer number, TrackInfo trackInfo)
+    {
+        Integer id = number - 1;
+        if ((id >= 0) && (id <= queue.size()))
+        {
+            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
+            {
+                while (downloaded.size() > 1)
+                {
+                    downloaded.get(1).data().delete();
+                    downloaded.remove(1);
+                }
+            }
+
+            queue.add(id + 1, new TrackInfo(trackInfo));
+
+            if (id < idCurrentTrack)
+            {
+                idCurrentTrack += 1;
+            }
+            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
+            {
+                for (int i = idCurrentTrack + 1; i < Math.min(queue.size(), idCurrentTrack + downloadReserve); i += 1)
+                {
+                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                }
+            }
+            if (nothingPlaying)
+            {
+                jumpTo(number + 1);
+            }
+        }
+    }
+
+    public void remove(Integer number)
+    {
+        Integer idDeletingTrack = number - 1;
+        if ((idDeletingTrack >= 0) && (idDeletingTrack < queue.size()))
+        {
+            System.out.println("Предзагружнных: " + downloaded.size() + "; Удаление: " + number);
+            queue.remove(queue.get(idDeletingTrack));
+            if (idDeletingTrack == idCurrentTrack)
+            {
+                System.out.println("Удаление текущего");
+                downloaded.get(0).data().delete();
+                downloaded.remove(0);
+                if (idCurrentTrack + downloadReserve - 1 < queue.size())
+                {
+                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getUrl()));
+                }
+                if (downloaded.size() > 0)
+                {
+                    jumpTo(idCurrentTrack + 1);
+                }
+                else if ((isQueueLooped) && (queue.size() > 0))
+                {
+                    jumpTo(1);
+                }
+                else
+                {
+                    endOfTrack = true;
+                    player.stopTrack();
+                    guild.getAudioManager().closeAudioConnection();
+                    nothingPlaying = true;
+                }
+            }
+            else if (idDeletingTrack < idCurrentTrack)
+            {
+                System.out.println("Удаление до");
+                idCurrentTrack -= 1;
+            }
+            else if (idDeletingTrack - idCurrentTrack < downloadReserve)
+            {
+                System.out.println("Удаление после");
+                downloaded.get(idDeletingTrack - idCurrentTrack).data().delete();
+                downloaded.remove(idDeletingTrack - idCurrentTrack);
+                if (idCurrentTrack + downloadReserve - 1 < queue.size())
+                {
+                    System.out.println("B");
+                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getUrl()));
                 }
             }
         }
     }
 
-    public void pause()
+    public void play(AudioTrack track)
     {
-        player.setPaused(true);
-    }
-
-    public void resume()
-    {
-        player.setPaused(false);
+        player.startTrack(track, true);
     }
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason)
     {
-        if (fromLoadTrack)
+        if (fromJump)
         {
-            fromLoadTrack = false;
+            fromJump = false;
         }
         else
         {
             endOfTrack = true;
             if (isTrackLooped)
             {
-                loadTrack(currentTrackNumber);
+                jumpTo(idCurrentTrack + 1);
             }
-            else if ((isQueueLooped) && (currentTrackNumber + 1 == queue.size()))
+            else if ((isQueueLooped) && (idCurrentTrack + 1 == queue.size()))
             {
-                loadTrack(0);
+                jumpTo(1);
             }
-            else if (currentTrackNumber + 1 == queue.size())
+            else if (idCurrentTrack + 1 == queue.size())
             {
                 guild.getAudioManager().closeAudioConnection();
+                nothingPlaying = true;
             }
             else
             {
-                loadTrack(currentTrackNumber + 1);
+                jumpTo(idCurrentTrack + 2);
             }
             endOfTrack = false;
         }
     }
 
-    public TrackInfo getTrackInfo(String code)
-    {
-        if (code.equals("New"))
-        {
-            return queue.get(queue.size() - 1);
-        }
-        else if (code.equals("Current"))
-        {
-            return queue.get(currentTrackNumber);
-        }
-        else
-        {
-            return queue.get(currentTrackNumber);
-        }
-    }
-
     public void setTrackTime(String time)
     {
-        String[] hms = time.split(".");
+        String[] hms = time.split(":");
         Long newTimeInLong = 0L;
 
         if (hms.length == 1)
@@ -343,6 +347,7 @@ public class TrackScheduler extends AudioEventAdapter
         }
 
         Long trackLength = player.getPlayingTrack().getInfo().length;
+
         if ((newTimeInLong >= 0) && (newTimeInLong < trackLength))
         {
             player.getPlayingTrack().setPosition(newTimeInLong);
@@ -352,157 +357,89 @@ public class TrackScheduler extends AudioEventAdapter
     public String getTrackTime()
     {
         Long currentPoint = player.getPlayingTrack().getPosition();
-        currentPoint /= 1000;
-
-        String currentPointSeconds = String.valueOf(currentPoint % 60);
-        currentPoint /= 60;
-        if (currentPointSeconds.length() == 1)
-        {
-            currentPointSeconds = "0" + currentPointSeconds;
-        }
-        String currentPointMinutes = String.valueOf(currentPoint % 60);
-        currentPoint /= 60;
-        if (currentPointMinutes.length() == 1)
-        {
-            currentPointMinutes = "0" + currentPointMinutes;
-        }
-        String currentPointHour = String.valueOf(currentPoint % 24);
-        currentPoint /= 24;
-        if (currentPointHour.length() == 1)
-        {
-            currentPointHour = "0" + currentPointHour;
-        }
-
         Long trackLength = player.getPlayingTrack().getInfo().length;
-        trackLength /= 1000;
 
-        String trackLengthSeconds = String.valueOf(trackLength % 60);
-        trackLength /= 60;
-        if (trackLengthSeconds.length() == 1)
-        {
-            trackLengthSeconds = "0" + trackLengthSeconds;
-        }
-        String trackLengthMinutes = String.valueOf(trackLength % 60);
-        trackLength /= 60;
-        if (trackLengthMinutes.length() == 1)
-        {
-            trackLengthMinutes = "0" + trackLengthMinutes;
-        }
-        String trackLengthHour = String.valueOf(trackLength % 24);
-        trackLength /= 24;
-        if (trackLengthHour.length() == 1)
-        {
-            trackLengthHour = "0" + trackLengthHour;
-        }
-
-        return currentPointHour + "." + currentPointMinutes + "." + currentPointSeconds
-                + " / " + trackLengthHour + "." + trackLengthMinutes + "." + trackLengthSeconds;
+        return timeValueToStringHms(currentPoint) + " / " + timeValueToStringHms(trackLength);
     }
 
-    public ArrayList<TrackInfo> getQueueInfo()
+    private String timeValueToStringHms(Long time)
     {
-        return queue;
+        time /= 1000;
+
+        String seconds = String.valueOf(time % 60);
+        time /= 60;
+        if (seconds.length() == 1)
+        {
+            seconds = "0" + seconds;
+        }
+        String minutes = String.valueOf(time % 60);
+        time /= 60;
+        if (minutes.length() == 1)
+        {
+            minutes = "0" + minutes;
+        }
+        String hours = String.valueOf(time % 24);
+        time /= 24;
+        if (hours.length() == 1)
+        {
+            hours = "0" + hours;
+        }
+        return hours + ":" + minutes + ":" + seconds;
     }
 
-    public Boolean getIsTrackLooped()
+    public TrackInfo getTrackInfo(Integer number)
+    {
+        return queue.get(number - 1);
+    }
+
+    public Integer getQueueSize()
+    {
+        return queue.size();
+    }
+
+    public Integer getCurrentTrackNumber()
+    {
+        return idCurrentTrack + 1;
+    }
+
+    public Integer getDownloadReserve()
+    {
+        return downloadReserve;
+    }
+
+    public void pause()
+    {
+        player.setPaused(true);
+    }
+
+    public void resume()
+    {
+        player.setPaused(false);
+    }
+
+    public Boolean isTrackLooped()
     {
         return isTrackLooped;
     }
 
-    public Boolean getIsQueueLooped()
+    public void changeTrackLoopMode()
+    {
+        isTrackLooped = !isTrackLooped;
+    }
+
+    public Boolean isQueueLooped()
     {
         return isQueueLooped;
     }
 
-    public void loadTrack(Integer id)
+    public void changeQueueLoopMode()
     {
-        if ((id >= 0) && (id < queue.size()))
-        {
-            if (!endOfTrack)
-            {
-                fromLoadTrack = true;
-                if (queue.size() == 0)
-                {
-                    guild.getAudioManager().closeAudioConnection();
-                }
-            }
-            else if (queue.size() == 0)
-            {
-                fromLoadTrack = true;
-                guild.getAudioManager().closeAudioConnection();
-            }
-            player.stopTrack();
-            fromLoadTrack = false;
-
-            // Если слева от текущего и затрагиваются загруженные
-            if ((currentTrackNumber - id < downloadReserve) && (id < currentTrackNumber))
-            {
-                for (int i = 0; i < currentTrackNumber - id; i += 1)
-                {
-                    Response<File> loadTrackFromUrl = Video.loadTrackFromUrl(outputDir, queue.get(id + i).getUrl());
-                    downloaded.add(0, loadTrackFromUrl);
-                }
-                for (int i = 0; i < currentTrackNumber - id; i += 1)
-                {
-                    if (downloaded.size() > downloadReserve)
-                    {
-                        downloaded.remove(downloaded.size() - 1);
-                    }
-                }
-            }
-            // Если справа от текущего и затрагиваются загруженные
-            else if ((id - currentTrackNumber < downloadReserve) && (currentTrackNumber < id))
-            {
-                for (int i = 0; i < id - currentTrackNumber; i += 1)
-                {
-                    downloaded.get(0).data().delete();
-                    downloaded.remove(0);
-                }
-                for (int i = id + downloaded.size(); i < Math.min(id + downloadReserve, queue.size()); i++)
-                {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
-                }
-            }
-            else if (currentTrackNumber != id)
-            {
-                Integer downloadadSize = downloaded.size();
-                for (int i = 0; i < downloadadSize; i += 1)
-                {
-                    downloaded.get(0).data().delete();
-                    downloaded.remove(0);
-                }
-                for (int i = id; i < Math.min(id + downloadReserve, queue.size()); i++)
-                {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
-                }
-            }
-
-            currentTrackNumber = id;
-            if (downloaded.size() > 0)
-            {
-                PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
-            }
-            updateNowPlaying();
-        }
+        isQueueLooped = !isQueueLooped;
     }
 
-    public void updateNowPlaying()
+    public void endTrack()
     {
-        TrackInfo nowPlayingInfo = getTrackInfo("Current");
-        EmbedBuilder nowPlayingEmbed = new EmbedBuilder();
-
-        nowPlayingEmbed.setColor(Color.decode("#2ECC71"));
-        nowPlayingEmbed.setTitle("Сейчас играет:");
-
-        nowPlayingEmbed.addField(nowPlayingInfo.getTitle(),
-                nowPlayingInfo.getAuthor() + "\n" + nowPlayingInfo.getUrl(), false);
-
-        textChannel.sendMessage(nowPlayingEmbed.build()).delay(30, TimeUnit.SECONDS).flatMap(Message::delete).submit();
-    }
-    
-    public Integer getCurentTrackNumber()
-    {
-        return currentTrackNumber;
+        player.stopTrack();
     }
 }
 

@@ -3,6 +3,7 @@ package com.djusufcompany.discordmusicbot.commands;
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
 import com.djusufcompany.discordmusicbot.TrackInfo;
+import com.djusufcompany.discordmusicbot.TrackScheduler;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -32,29 +33,34 @@ public class Queue extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        ArrayList<TrackInfo> queueInfo = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.getQueueInfo();
-        Integer currentTrackNumber = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.getCurentTrackNumber() + 1;
-        for (int i = 0; i < queueInfo.size() / 25 + 1; i += 1)
+        TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
+        Integer currentTrackNumber = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.getCurrentTrackNumber();
+        Integer queueSize = scheduler.getQueueSize();
+        EmbedBuilder queueEmbed = new EmbedBuilder();
+        queueEmbed.setColor(Color.decode("#2ECC71"));
+        queueEmbed.setTitle("Очередь воспроизведения:");
+        for (int i = 1; i <= queueSize; i += 1)
         {
-            EmbedBuilder queueEmbed = new EmbedBuilder();
-            queueEmbed.setColor(Color.decode("#2ECC71"));
-            queueEmbed.setTitle("Очередь воспроизведения:");
+            TrackInfo regularTrack = scheduler.getTrackInfo(i);
 
-            for (int j = 0; j < Math.min(queueInfo.size() - i * 25, 25); j += 1)
+            if (currentTrackNumber == i)
             {
-                if (currentTrackNumber == (i * 25) + j + 1)
-                {
-                    queueEmbed.addField((">>>>> " + (i * 25) + j + 1) + ". " + queueInfo.get((i * 25) + j).getTitle(),
-                            queueInfo.get((i * 25) + j).getAuthor() + "\n" + queueInfo.get((i * 25) + j).getUrl(), false);
-                }
-                else
-                {
-                    queueEmbed.addField(((i * 25) + j + 1) + ". " + queueInfo.get((i * 25) + j).getTitle(),
-                            queueInfo.get((i * 25) + j).getAuthor() + "\n" + queueInfo.get((i * 25) + j).getUrl(), false);
-                }
+                queueEmbed.addField(">>>>> " + i + ". " + regularTrack.getTitle(),
+                        regularTrack.getAuthor() + "\n" + regularTrack.getUrl(), false);
+            }
+            else
+            {
+                queueEmbed.addField(i + ". " + regularTrack.getTitle(),
+                        regularTrack.getAuthor() + "\n" + regularTrack.getUrl(), false);
             }
 
-            event.getChannel().sendMessage(queueEmbed.build()).delay(180, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+            if ((i % 25 == 0) || (i == queueSize))
+            {
+                event.getChannel().sendMessage(queueEmbed.build()).submit();
+                queueEmbed.clear();
+                queueEmbed.setColor(Color.decode("#2ECC71"));
+                queueEmbed.setTitle("Очередь воспроизведения:");
+            }
         }
     }
 }

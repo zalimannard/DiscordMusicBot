@@ -7,6 +7,7 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import com.djusufcompany.discordmusicbot.TrackScheduler;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -32,7 +33,8 @@ public class Prev extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.previousTrack();
+        TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
+        scheduler.jumpTo(scheduler.getCurrentTrackNumber() - 1);
     }
 }
 

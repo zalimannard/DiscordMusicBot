@@ -30,12 +30,15 @@ public class Pause extends Command
 
     public void execute(MessageReceivedEvent event)
     {
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
-        
-        EmbedBuilder queueEmbed = new EmbedBuilder();
-        queueEmbed.setColor(Color.decode("#2ECC71"));
-        queueEmbed.setTitle("Воспроизведение приостановлено");
-        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        if (event.getMember().getVoiceState().inVoiceChannel())
+        {
+            PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
+
+            EmbedBuilder queueEmbed = new EmbedBuilder();
+            queueEmbed.setColor(Color.decode("#2ECC71"));
+            queueEmbed.setTitle("Воспроизведение приостановлено");
+            event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        }
     }
 }
 

@@ -2,6 +2,7 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import com.djusufcompany.discordmusicbot.TrackScheduler;
 import java.awt.Color;
 import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -33,8 +34,10 @@ public class Lasttrack extends Command
 
     public void execute(MessageReceivedEvent event)
     {
+        TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
         Member member = event.getMember();
         String trackUrl = "https://youtu.be/7-JnqyEpEXM";
+        Info.getInstance().setChannel(event.getMessage().getChannel());
 
         if (member.getVoiceState().inVoiceChannel())
         {
@@ -42,18 +45,16 @@ public class Lasttrack extends Command
             final VoiceChannel memberChannel = member.getVoiceState().getChannel();
 
             audioManager.openAudioConnection(memberChannel);
-            PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler
-                    .addTrackToQueue(
-                            trackUrl,
-                            event.getMessage().getTextChannel());
-        }
-        PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.resume();
+            scheduler.insertTrack(scheduler.getQueueSize(), trackUrl);
+            scheduler.resume();
 
-        EmbedBuilder queueEmbed = new EmbedBuilder();
-        queueEmbed.setColor(Color.decode("#2ECC71"));
-        String trackName = PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler.getTrackInfo("New").getTitle();
-        queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь");
-        event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+            
+            EmbedBuilder queueEmbed = new EmbedBuilder();
+            queueEmbed.setColor(Color.decode("#2ECC71"));
+            String trackName = scheduler.getTrackInfo(scheduler.getQueueSize()).getTitle();
+            queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь");
+            event.getChannel().sendMessage(queueEmbed.build()).delay(20, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+        }
     }
 }
 
