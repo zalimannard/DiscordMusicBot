@@ -5,10 +5,7 @@ import com.djusufcompany.discordmusicbot.PlayerManager;
 import com.djusufcompany.discordmusicbot.TrackInfo;
 import com.djusufcompany.discordmusicbot.TrackScheduler;
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
@@ -46,12 +43,12 @@ public class Queue extends Command
             if (currentTrackNumber == i)
             {
                 queueEmbed.addField(">>>>> " + i + ". " + regularTrack.getTitle(),
-                        regularTrack.getAuthor() + "\n" + regularTrack.getUrl(), false);
+                        regularTrack.getAuthor() + "\nhttps://youtu.be/" + regularTrack.getVideoId(), false);
             }
             else
             {
                 queueEmbed.addField(i + ". " + regularTrack.getTitle(),
-                        regularTrack.getAuthor() + "\n" + regularTrack.getUrl(), false);
+                        regularTrack.getAuthor() + "\nhttps://youtu.be/" + regularTrack.getVideoId(), false);
             }
 
             if ((i % 25 == 0) || (i == queueSize))

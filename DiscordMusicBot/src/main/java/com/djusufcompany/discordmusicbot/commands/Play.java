@@ -4,15 +4,11 @@ package com.djusufcompany.discordmusicbot.commands;
 import com.djusufcompany.discordmusicbot.PlayerManager;
 import com.djusufcompany.discordmusicbot.TrackScheduler;
 import com.djusufcompany.discordmusicbot.Video;
-import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.VoiceChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.managers.AudioManager;
@@ -45,26 +41,23 @@ public class Play extends Command
     public void execute(MessageReceivedEvent event)
     {
         Member member = event.getMember();
-        String trackUrl = event.getMessage().getContentRaw().split(" ")[1];
-        Info.getInstance().setChannel(event.getMessage().getChannel());
+        String videoUrl = event.getMessage().getContentRaw().split(" ")[1];
 
         if (member.getVoiceState().inVoiceChannel())
         {
             TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(member.getGuild()).scheduler;
             final AudioManager audioManager = member.getGuild().getAudioManager();
             final VoiceChannel memberChannel = member.getVoiceState().getChannel();
-            EmbedBuilder queueEmbed = new EmbedBuilder();
-            queueEmbed.setColor(Color.decode("#2ECC71"));
 
-            if (trackUrl.contains("/playlist?list="))
+            if (videoUrl.contains("/playlist?list="))
             {
                 audioManager.openAudioConnection(memberChannel);
-                ArrayList<String> urls = Video.getTracksUrlFromPlaylist(trackUrl);
-                for (String url : urls)
+                ArrayList<String> ids = Video.getTracksVideoIdFromPlaylist(videoUrl);
+                for (String id : ids)
                 {
                     try
                     {
-                        scheduler.insertTrack(scheduler.getQueueSize(), url);
+                        scheduler.insertTrack(scheduler.getQueueSize(), id, false);
                         scheduler.resume();
                     }
                     catch (Exception e)
@@ -72,19 +65,14 @@ public class Play extends Command
                         System.out.println("Не получилось добавить трек из плейлиста");
                     }
                 }
-
-                queueEmbed.setTitle("Плейлист добавлен в очередь");
-                event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+                Queue.getInstance().execute(event);
             }
-            else if (trackUrl.contains("https://"))
+            else if (videoUrl.contains("https://"))
             {
                 audioManager.openAudioConnection(memberChannel);
-                scheduler.insertTrack(scheduler.getQueueSize(), trackUrl);
+                String videoId = Video.urlToId(videoUrl);
+                scheduler.insertTrack(scheduler.getQueueSize(), videoId, true);
                 scheduler.resume();
-
-                String trackName = scheduler.getTrackInfo(scheduler.getQueueSize()).getTitle();
-                queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь");
-                event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
             }
             else
             {
@@ -100,7 +88,7 @@ public class Play extends Command
                     JSONObject item;
                     JSONObject id;
                     String videoId = null;
-                    
+
                     try
                     {
                         jsonItem = new JSONObject(getJson).getJSONArray("items");
@@ -113,16 +101,9 @@ public class Play extends Command
                         Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
                     }
 
-                    String urlForYoutube = "https://www.youtube.com/watch?v=" + videoId;
-
                     audioManager.openAudioConnection(memberChannel);
-                    scheduler.insertTrack(scheduler.getQueueSize(), urlForYoutube);
+                    scheduler.insertTrack(scheduler.getQueueSize(), videoId, true);
                     scheduler.resume();
-
-                    String trackName = scheduler.getTrackInfo(scheduler.getQueueSize()).getTitle();
-                    queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь");
-                    event.getChannel().sendMessage(queueEmbed.build()).delay(10, TimeUnit.SECONDS).flatMap(Message::delete).submit();
-
                 }
                 catch (IOException ex)
                 {

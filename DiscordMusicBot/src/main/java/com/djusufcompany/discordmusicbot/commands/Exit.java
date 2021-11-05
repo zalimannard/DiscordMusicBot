@@ -2,6 +2,7 @@ package com.djusufcompany.discordmusicbot.commands;
 
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
+import com.djusufcompany.discordmusicbot.TrackScheduler;
 import java.awt.Color;
 import java.util.concurrent.TimeUnit;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -30,9 +31,19 @@ public class Exit extends Command
 
     public void execute(MessageReceivedEvent event)
     {
+        TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
         if (event.getMember().getVoiceState().inVoiceChannel())
         {
             event.getMember().getGuild().getAudioManager().closeAudioConnection();
+            Info.deleteNowPlaying();
+            if (scheduler.isTrackLooped())
+            {
+                scheduler.changeTrackLoopMode();
+            }
+            if (scheduler.isQueueLooped())
+            {
+                scheduler.changeQueueLoopMode();
+            }
             PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler.pause();
 
             EmbedBuilder queueEmbed = new EmbedBuilder();

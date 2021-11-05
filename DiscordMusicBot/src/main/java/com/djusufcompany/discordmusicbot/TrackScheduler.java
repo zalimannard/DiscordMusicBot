@@ -13,10 +13,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.dv8tion.jda.api.entities.Guild;
+
 
 public class TrackScheduler extends AudioEventAdapter
 {
@@ -61,6 +61,7 @@ public class TrackScheduler extends AudioEventAdapter
 
     public void jumpTo(Integer number)
     {
+        Info.deleteNowPlaying();
         Integer idNewTrack = number - 1;
         if ((idNewTrack >= 0) && (idNewTrack < queue.size()))
         {
@@ -70,7 +71,7 @@ public class TrackScheduler extends AudioEventAdapter
                 fromJump = true;
                 if (queue.size() == 0)
                 {
-                    guild.getAudioManager().closeAudioConnection();
+                    leaveFromChannel();
                     nothingPlaying = true;
                 }
             }
@@ -78,7 +79,7 @@ public class TrackScheduler extends AudioEventAdapter
             else if (queue.size() == 0)
             {
                 fromJump = true;
-                guild.getAudioManager().closeAudioConnection();
+                leaveFromChannel();
                 nothingPlaying = true;
             }
             player.stopTrack();
@@ -87,7 +88,7 @@ public class TrackScheduler extends AudioEventAdapter
             // Загрузка трека без играющих предыдущих
             if (downloaded.size() == 0)
             {
-                downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl()));
+                downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(idNewTrack).getVideoId()));
                 PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
                 nothingPlaying = false;
             }
@@ -109,7 +110,7 @@ public class TrackScheduler extends AudioEventAdapter
                     }
                 }
                 // Добавление нового проигрываемого трека
-                Response<File> loadPlayingTrackFromUrl = Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl());
+                Response<File> loadPlayingTrackFromUrl = Video.loadTrackFromVideoId(outputDir, queue.get(idNewTrack).getVideoId());
                 downloaded.add(0, loadPlayingTrackFromUrl);
                 // Начинаем его играть, чтобы пользователь не ждал
                 PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
@@ -117,12 +118,12 @@ public class TrackScheduler extends AudioEventAdapter
                 // Загружаем остальные треки
                 for (int i = 1; i < idCurrentTrack - idNewTrack; i += 1)
                 {
-                    Response<File> loadTrackFromUrl = Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack + i).getUrl());
+                    Response<File> loadTrackFromUrl = Video.loadTrackFromVideoId(outputDir, queue.get(idNewTrack + i).getVideoId());
                     downloaded.add(0, loadTrackFromUrl);
                 }
             }
             // Загрузка трека справа от текущего с возможностью сохранения предзагруженных
-            else if ((idNewTrack > idCurrentTrack) && (idNewTrack - idCurrentTrack < downloadReserve))
+            else if ((idNewTrack > idCurrentTrack) && (idNewTrack - idCurrentTrack < downloadReserve) && (downloaded.size() > 0))
             {
                 PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(idNewTrack - idCurrentTrack).data().getAbsolutePath());
                 nothingPlaying = false;
@@ -133,7 +134,7 @@ public class TrackScheduler extends AudioEventAdapter
                 }
                 for (int i = idNewTrack + downloaded.size(); i < Math.min(idNewTrack + downloadReserve, queue.size()); i++)
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                    downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(i).getVideoId()));
                 }
             }
             // Загрузка трека, не затрагивающего предзагруженные
@@ -144,12 +145,12 @@ public class TrackScheduler extends AudioEventAdapter
                     downloaded.get(0).data().delete();
                     downloaded.remove(0);
                 }
-                downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idNewTrack).getUrl()));
+                downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(idNewTrack).getVideoId()));
                 PlayerManager.getInstance().loadAndPlay(guild, downloaded.get(0).data().getAbsolutePath());
                 nothingPlaying = false;
                 for (int i = idNewTrack + 1; i < Math.min(idNewTrack + downloadReserve, queue.size()); i++)
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                    downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(i).getVideoId()));
                 }
             }
             idCurrentTrack = idNewTrack;
@@ -158,7 +159,7 @@ public class TrackScheduler extends AudioEventAdapter
         }
     }
 
-    public void insertTrack(Integer number, String url)
+    public void insertTrack(Integer number, String videoId, Boolean withNotification)
     {
         Integer id = number;
         if ((id >= 0) && (id <= queue.size()))
@@ -168,7 +169,7 @@ public class TrackScheduler extends AudioEventAdapter
             try
             {
                 downloader = new YoutubeDownloader();
-                video = Video.getVideoInfo(downloader, url);
+                video = Video.getVideoInfo(downloader, videoId);
             }
             catch (Exception e)
             {
@@ -182,7 +183,18 @@ public class TrackScheduler extends AudioEventAdapter
                 }
             }
 
-            queue.add(id, new TrackInfo(video.details().author(), video.details().title(), url));
+            queue.add(id, new TrackInfo(
+                    videoId,
+                    video.details().title(),
+                    video.details().author(),
+                    new Long(video.details().lengthSeconds()) * 1000)
+            );
+
+            if (withNotification)
+            {
+                Info.getInstance().printTrackAdded(getTrackInfo(id + 1));
+            }
+
             if ((id <= idCurrentTrack) && (!nothingPlaying))
             {
                 idCurrentTrack += 1;
@@ -191,41 +203,7 @@ public class TrackScheduler extends AudioEventAdapter
             {
                 for (int i = idCurrentTrack + 1; i < Math.min(queue.size(), idCurrentTrack + downloadReserve); i += 1)
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
-                }
-            }
-            if (nothingPlaying)
-            {
-                jumpTo(number + 1);
-            }
-        }
-    }
-
-    public void insertTrack(Integer number, TrackInfo trackInfo)
-    {
-        Integer id = number - 1;
-        if ((id >= 0) && (id <= queue.size()))
-        {
-            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
-            {
-                while (downloaded.size() > 1)
-                {
-                    downloaded.get(1).data().delete();
-                    downloaded.remove(1);
-                }
-            }
-
-            queue.add(id + 1, new TrackInfo(trackInfo));
-
-            if (id < idCurrentTrack)
-            {
-                idCurrentTrack += 1;
-            }
-            if ((id - idCurrentTrack < downloadReserve) && (idCurrentTrack < id))
-            {
-                for (int i = idCurrentTrack + 1; i < Math.min(queue.size(), idCurrentTrack + downloadReserve); i += 1)
-                {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(i).getUrl()));
+                    downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(i).getVideoId()));
                 }
             }
             if (nothingPlaying)
@@ -241,13 +219,14 @@ public class TrackScheduler extends AudioEventAdapter
         if ((idDeletingTrack >= 0) && (idDeletingTrack < queue.size()))
         {
             queue.remove(queue.get(idDeletingTrack));
+
             if (idDeletingTrack == idCurrentTrack)
             {
                 downloaded.get(0).data().delete();
                 downloaded.remove(0);
                 if (idCurrentTrack + downloadReserve - 1 < queue.size())
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getUrl()));
+                    downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getVideoId()));
                 }
                 if (downloaded.size() > 0)
                 {
@@ -261,7 +240,7 @@ public class TrackScheduler extends AudioEventAdapter
                 {
                     endOfTrack = true;
                     player.stopTrack();
-                    guild.getAudioManager().closeAudioConnection();
+                    leaveFromChannel();
                     nothingPlaying = true;
                 }
             }
@@ -275,7 +254,7 @@ public class TrackScheduler extends AudioEventAdapter
                 downloaded.remove(idDeletingTrack - idCurrentTrack);
                 if (idCurrentTrack + downloadReserve - 1 < queue.size())
                 {
-                    downloaded.add(Video.loadTrackFromUrl(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getUrl()));
+                    downloaded.add(Video.loadTrackFromVideoId(outputDir, queue.get(idCurrentTrack + downloadReserve - 1).getVideoId()));
                 }
             }
         }
@@ -306,7 +285,7 @@ public class TrackScheduler extends AudioEventAdapter
             }
             else if (idCurrentTrack + 1 == queue.size())
             {
-                guild.getAudioManager().closeAudioConnection();
+                leaveFromChannel();
                 nothingPlaying = true;
             }
             else
@@ -319,27 +298,7 @@ public class TrackScheduler extends AudioEventAdapter
 
     public void setTrackTime(String time)
     {
-        String[] hms = time.split(":");
-        Long newTimeInLong = 0L;
-
-        if (hms.length == 1)
-        {
-            newTimeInLong += Long.valueOf(hms[0]) * 1000;
-        }
-        else if (hms.length == 2)
-        {
-            newTimeInLong += 0
-                    + Long.valueOf(hms[0]) * 60 * 1000
-                    + Long.valueOf(hms[1]) * 1000;
-        }
-        else if (hms.length == 3)
-        {
-            newTimeInLong += 0
-                    + Long.valueOf(hms[0]) * 60 * 60 * 1000
-                    + Long.valueOf(hms[1]) * 60 * 1000
-                    + Long.valueOf(hms[2]) * 1000;
-        }
-
+        Long newTimeInLong = Time.timeStringToValue(time);
         Long trackLength = player.getPlayingTrack().getInfo().length;
 
         if ((newTimeInLong >= 0) && (newTimeInLong < trackLength))
@@ -348,37 +307,12 @@ public class TrackScheduler extends AudioEventAdapter
         }
     }
 
-    public String getTrackTime()
+    public String getCurrentTrackTimeHms()
     {
         Long currentPoint = player.getPlayingTrack().getPosition();
         Long trackLength = player.getPlayingTrack().getInfo().length;
 
-        return timeValueToStringHms(currentPoint) + " / " + timeValueToStringHms(trackLength);
-    }
-
-    private String timeValueToStringHms(Long time)
-    {
-        time /= 1000;
-
-        String seconds = String.valueOf(time % 60);
-        time /= 60;
-        if (seconds.length() == 1)
-        {
-            seconds = "0" + seconds;
-        }
-        String minutes = String.valueOf(time % 60);
-        time /= 60;
-        if (minutes.length() == 1)
-        {
-            minutes = "0" + minutes;
-        }
-        String hours = String.valueOf(time % 24);
-        time /= 24;
-        if (hours.length() == 1)
-        {
-            hours = "0" + hours;
-        }
-        return hours + ":" + minutes + ":" + seconds;
+        return Time.timeValueToStringHms(currentPoint) + " / " + Time.timeValueToStringHms(trackLength);
     }
 
     public TrackInfo getTrackInfo(Integer number)
@@ -434,6 +368,20 @@ public class TrackScheduler extends AudioEventAdapter
     public void endTrack()
     {
         player.stopTrack();
+    }
+
+    private void leaveFromChannel()
+    {
+        guild.getAudioManager().closeAudioConnection();
+        if (isTrackLooped())
+        {
+            changeTrackLoopMode();
+        }
+        if (isQueueLooped())
+        {
+            changeQueueLoopMode();
+        }
+        Info.deleteNowPlaying();
     }
 }
 

@@ -17,10 +17,11 @@ import java.util.List;
 
 public abstract class Video
 {
-    public static Response<File> loadTrackFromUrl(File outputDir, String url)
+
+    public static Response<File> loadTrackFromVideoId(File outputDir, String videoId)
     {
         YoutubeDownloader downloader = new YoutubeDownloader();
-        VideoInfo video = getVideoInfo(downloader, url);
+        VideoInfo video = getVideoInfo(downloader, videoId);
 
         Format format = video.bestAudioFormat();
         if (format == null)
@@ -37,7 +38,7 @@ public abstract class Video
         return null;
     }
 
-    public static ArrayList<String> getTracksUrlFromPlaylist(String url)
+    public static ArrayList<String> getTracksVideoIdFromPlaylist(String url)
     {
         ArrayList<String> answer = new ArrayList<String>();
         String playlistId = null;
@@ -60,11 +61,11 @@ public abstract class Video
         List<PlaylistVideoDetails> tracks = playlistInfo.videos();
         for (PlaylistVideoDetails track : tracks)
         {
-            answer.add("https://www.youtube.com/watch?v=" + track.videoId());
+            answer.add(track.videoId());
         }
         return answer;
     }
-    
+
     public static String urlToId(String url)
     {
         String videoId = null;
@@ -100,9 +101,8 @@ public abstract class Video
         return videoId;
     }
 
-    public static VideoInfo getVideoInfo(YoutubeDownloader downloader, String url)
+    public static VideoInfo getVideoInfo(YoutubeDownloader downloader, String videoId)
     {
-        String videoId = urlToId(url);
         RequestVideoInfo requestInfo = new RequestVideoInfo(videoId);
         Response<VideoInfo> responseInfo = downloader.getVideoInfo(requestInfo);
         return responseInfo.data();

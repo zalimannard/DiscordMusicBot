@@ -3,11 +3,15 @@ package com.djusufcompany.discordmusicbot.commands;
 
 import com.djusufcompany.discordmusicbot.PlayerManager;
 import com.djusufcompany.discordmusicbot.TrackScheduler;
-import java.awt.Color;
-import java.util.concurrent.TimeUnit;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
+import com.djusufcompany.discordmusicbot.Video;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.jsoup.Jsoup;
 
 
 public class Insert extends Command
@@ -17,7 +21,7 @@ public class Insert extends Command
     private Insert()
     {
         commandName = "insert";
-        arguments = "(ID) (URL)";
+        arguments = "(ID) (URL) / (ID) (запрос)";
         description = "Вставить трек после указанного";
     }
 
@@ -36,14 +40,45 @@ public class Insert extends Command
         {
             TrackScheduler scheduler = PlayerManager.getInstance().getMusicManager(event.getMember().getGuild()).scheduler;
             String message = event.getMessage().getContentRaw().substring(2 + commandName.length());
-            String parts[] = message.split(" ");
-            scheduler.insertTrack(Integer.valueOf(parts[0]), parts[1]);
+            if (message.contains("https://"))
+            {
+                String parts[] = message.split(" ");
+                scheduler.insertTrack(Integer.valueOf(parts[0]), Video.urlToId(parts[1]), true);
+            }
+            else
+            {
+                String keyword = message.substring(message.indexOf(" ") + 1);
+                String url = "https://www.googleapis.com/youtube/v3/search?maxResults=1&q=" + keyword + "&key=AIzaSyANMWEq-XP4vTyPEQFvr9xujOjwikizkIc";
+                String getJson = null;
+                try
+                {
+                    getJson = Jsoup.connect(url).timeout(10 * 1000).ignoreContentType(true).get().text();
+                }
+                catch (IOException ex)
+                {
+                    Logger.getLogger(Insert.class.getName()).log(Level.SEVERE, null, ex);
+                }
 
-            EmbedBuilder queueEmbed = new EmbedBuilder();
-            queueEmbed.setColor(Color.decode("#2ECC71"));
-            String trackName = scheduler.getTrackInfo(Integer.valueOf(parts[0])).getTitle();
-            queueEmbed.setTitle("Трек \"" + trackName + "\" добавлен в очередь под номером " + (Integer.valueOf(parts[0]) + 1));
-            event.getChannel().sendMessage(queueEmbed.build()).delay(20, TimeUnit.SECONDS).flatMap(Message::delete).submit();
+                JSONArray jsonItem;
+                JSONObject item;
+                JSONObject id;
+                String videoId = null;
+
+                try
+                {
+                    jsonItem = new JSONObject(getJson).getJSONArray("items");
+                    item = jsonItem.getJSONObject(0);
+                    id = item.getJSONObject("id");
+                    videoId = id.getString("videoId");
+                }
+                catch (JSONException ex)
+                {
+                    Logger.getLogger(Play.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+                String parts[] = message.split(" ");
+                scheduler.insertTrack(Integer.valueOf(parts[0]), videoId, true);
+            }
         }
     }
 }

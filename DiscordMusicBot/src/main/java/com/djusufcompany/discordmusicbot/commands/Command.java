@@ -4,7 +4,6 @@ package com.djusufcompany.discordmusicbot.commands;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 
-
 public abstract class Command
 {
     protected String commandName = "";
@@ -25,7 +24,7 @@ public abstract class Command
     {
         return description;
     }
-    
+
     public abstract void execute(MessageReceivedEvent event);
 }
 

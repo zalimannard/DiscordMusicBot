@@ -36,7 +36,7 @@ public class Jump extends Command
             final AudioManager audioManager = member.getGuild().getAudioManager();
             final VoiceChannel memberChannel = member.getVoiceState().getChannel();
             audioManager.openAudioConnection(memberChannel);
-            
+
             Integer number = Integer.valueOf(event.getMessage().getContentRaw().substring(2 + commandName.length()));
             PlayerManager.getInstance().getMusicManager(event.getGuild()).scheduler.jumpTo(number);
         }

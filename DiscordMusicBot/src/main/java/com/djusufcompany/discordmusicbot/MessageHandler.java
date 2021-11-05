@@ -3,6 +3,7 @@ package com.djusufcompany.discordmusicbot;
 
 import com.djusufcompany.discordmusicbot.commands.Command;
 import com.djusufcompany.discordmusicbot.commands.CommandsGenerator;
+import com.djusufcompany.discordmusicbot.commands.Info;
 import java.util.ArrayList;
 import net.dv8tion.jda.api.events.guild.voice.GuildVoiceLeaveEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -14,29 +15,31 @@ public class MessageHandler extends ListenerAdapter
     @Override
     public void onMessageReceived(MessageReceivedEvent event)
     {
-        String message = null;
+        String message = " ";
         try
         {
             message = event.getMessage().getContentRaw();
+
             if (message.charAt(0) != '-')
             {
                 return;
             }
-
-            String inputCommand = (message.substring(1)).split(" ")[0];
-
-            ArrayList<Command> commands = CommandsGenerator.getCommands();
-            for (Command command : commands)
-            {
-                if (inputCommand.equals(command.getCommandName()))
-                {
-                    command.execute(event);
-                }
-            }
         }
         catch (Exception e)
         {
+            return;
+        }
 
+        String inputCommand = (message.substring(1)).split(" ")[0];
+
+        ArrayList<Command> commands = CommandsGenerator.getCommands();
+        for (Command command : commands)
+        {
+            if (inputCommand.equals(command.getCommandName()))
+            {
+                Info.getInstance().setChannel(event.getMessage().getChannel());
+                command.execute(event);
+            }
         }
     }
 

@@ -68,7 +68,7 @@ public class Shuffle extends Command
             while (tmpQueue.size() > 0)
             {
                 Integer number = random.nextInt(tmpQueue.size());
-                scheduler.insertTrack(scheduler.getQueueSize(), tmpQueue.get(number));
+                scheduler.insertTrack(scheduler.getQueueSize(), tmpQueue.get(number).getVideoId(), false);
                 tmpQueue.remove(tmpQueue.get(number));
             }
 

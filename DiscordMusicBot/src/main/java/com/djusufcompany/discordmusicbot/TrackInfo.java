@@ -3,27 +3,22 @@ package com.djusufcompany.discordmusicbot;
 
 public class TrackInfo
 {
-    private String author;
-    private String title;
-    private String url;
+    private final String videoId;
+    private final String title;
+    private final String author;
+    private final Long duration;
 
-    public TrackInfo(String author, String title, String url)
+    public TrackInfo(String videoId, String title, String author, Long duration)
     {
-        this.author = author;
+        this.videoId = videoId;
         this.title = title;
-        this.url = url;
+        this.author = author;
+        this.duration = duration;
     }
 
-    public TrackInfo(TrackInfo info)
+    public String getVideoId()
     {
-        this.author = info.getAuthor();
-        this.title = info.getTitle();
-        this.url = info.getUrl();
-    }
-
-    public String getAuthor()
-    {
-        return author;
+        return videoId;
     }
 
     public String getTitle()
@@ -31,9 +26,14 @@ public class TrackInfo
         return title;
     }
 
-    public String getUrl()
+    public String getAuthor()
     {
-        return url;
+        return author;
+    }
+
+    public Long getDuration()
+    {
+        return duration;
     }
 }
 
