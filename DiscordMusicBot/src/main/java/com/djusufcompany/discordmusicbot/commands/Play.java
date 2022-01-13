@@ -81,7 +81,7 @@ public class Play extends Command
                     audioManager.openAudioConnection(memberChannel);
 
                     String keyword = event.getMessage().getContentRaw().substring(commandName.length() + 2);
-                    String url = "https://www.googleapis.com/youtube/v3/search?maxResults=1&q=" + keyword + "&key=AIzaSyANMWEq-XP4vTyPEQFvr9xujOjwikizkIc";
+                    String url = "https://www.googleapis.com/youtube/v3/search?maxResults=1&q=" + keyword + "&key=AIzaSyAQnJI0GjbyxtQWbKbDlRbGgYBO45mF_zg";
                     String getJson = Jsoup.connect(url).timeout(10 * 1000).ignoreContentType(true).get().text();
 
                     JSONArray jsonItem;
